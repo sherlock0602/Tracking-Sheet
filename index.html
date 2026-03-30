@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小豆芽 🌱 班級收件小幫手</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --primary: #4CAF50;
+            --primary-light: #e8f5e9;
+            --exempt: #FF9800;
+            --edit-color: #2196F3;
+            --edit-light: #e3f2fd;
+            --text-dark: #333;
+            --bg-gray: #f5f5f5;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-gray);
+            color: var(--text-dark);
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2 { color: var(--primary); text-align: center; }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .inline-setup {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+        }
+        .form-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        label { font-weight: bold; color: #555; font-size: 14px;}
+        input[type="text"], input[type="number"], input[type="date"], input[type="month"] {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+        
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
+            transition: 0.2s;
+            white-space: nowrap;
+        }
+        button:hover { background-color: #45a049; transform: scale(1.02); }
+        button.danger { background-color: #f44336; }
+        button.danger:hover { background-color: #d32f2f; }
+        button.edit-btn { background-color: var(--edit-color); }
+        button.export-btn { background-color: #9C27B0; }
+        button.export-btn:hover { background-color: #7B1FA2; }
+        button.all-btn { background-color: #607D8B; }
+        button.all-btn:hover { background-color: #455A64; }
+        
+        /* 語音按鈕專屬樣式 */
+        button.voice-btn { background-color: #2196F3; font-size: 16px; width: 100%; max-width: 300px;}
+        button.voice-btn:hover { background-color: #1976D2; }
+        button.voice-btn.listening { background-color: #f44336; animation: pulse 1.5s infinite; }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(244, 67, 54, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0); }
+        }
+
+        .set-box {
+            border: 2px dashed #81C784;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            background-color: #fafafa;
+        }
+        .set-header {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+            align-items: center;
+            border-bottom: 2px solid var(--primary-light);
+            padding-bottom: 10px;
+        }
+        .set-header input { flex: 1; min-width: 120px; }
+        
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(45px, 1fr));
+            gap: 8px;
+        }
+        .num-btn {
+            background-color: white;
+            color: #666;
+            border: 2px solid #ddd;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+            transition: 0.1s;
+        }
+        .num-btn.active { background-color: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 0 8px rgba(76, 175, 80, 0.5); }
+        .num-btn.exempt { background-color: var(--exempt); color: white; border-color: var(--exempt); }
+        .edit-mode .num-btn.active { background-color: var(--edit-color); border-color: var(--edit-color); }
+        
+        .history-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            background-color: var(--primary-light);
+            padding: 12px 15px;
+            border-radius: 8px;
+            border: 1px solid #c8e6c9;
+            margin-bottom: 15px;
+            gap: 10px;
+        }
+        .history-title { margin: 0; color: var(--primary); font-size: 20px; white-space: nowrap; }
+        .filter-group { display: flex; align-items: center; gap: 8px; flex: 1; justify-content: center; flex-wrap: wrap; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; background: white; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: var(--primary-light); color: var(--primary); white-space: nowrap; }
+        
+        .legend { display: flex; justify-content: center; gap: 15px; margin-bottom: 10px; font-size: 13px; color: #666; }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        
+        .action-btns { display: flex; gap: 5px; }
+        .hide-on-export { display: table-cell; }
+    </style>
+</head>
+<body>
+
+    <h1>🌱 小豆芽：班級收件小幫手 ✨</h1>
+
+    <div class="card" id="setupCard">
+        <div class="inline-setup">
+            <div class="form-group"><label>班級</label><input type="text" id="className" value="一年甲班" style="width: 100px;"></div>
+            <div class="form-group"><label>人數</label><input type="number" id="studentCount" value="30" style="width: 60px;"></div>
+            <div class="form-group"><label>組數</label><input type="number" id="setCount" value="1" style="width: 50px;"></div>
+            <button onclick="generateTracker()">🚀 產生號碼表</button>
+        </div>
+    </div>
+
+    <div class="card" id="trackerCard" style="display: none;">
+        <div class="legend">
+            <span><div class="legend-dot" style="background-color: var(--primary);"></div> 已交</span>
+            <span><div class="legend-dot" style="background-color: var(--exempt);"></div> 免交</span>
+            <span>(點擊切換狀態)</span>
+        </div>
+        
+        <div style="text-align: center; margin-bottom: 15px; background: #e3f2fd; padding: 15px; border-radius: 8px; border: 2px dashed #90caf9;">
+            <button id="voiceBtn" class="voice-btn" onclick="toggleVoiceRecognition()">🎤 開啟語音點名</button>
+            <div id="voiceStatus" style="color: #1976D2; font-size: 14px; margin-top: 10px; font-weight: bold; min-height: 20px;">
+                點擊按鈕，允許麥克風後即可用語音報號喔！
+            </div>
+        </div>
+
+        <div id="gridsArea"></div>
+        
+        <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: center;">
+            <button onclick="saveRecord()">💾 儲存紀錄</button>
+            <button onclick="resetTracker()" class="danger">❌ 取消返回</button>
+        </div>
+    </div>
+
+    <div class="card edit-mode" id="editCard" style="display: none; border: 2px solid var(--edit-color);">
+        <h2 style="color: var(--edit-color); font-size: 20px;">✏️ 修改紀錄模式</h2>
+        <div class="set-box" style="border-color: var(--edit-color); background-color: var(--edit-light);">
+            <div class="set-header">
+                <input type="date" id="editDate">
+                <input type="text" id="editTitle">
+                <input type="text" id="editMemo" placeholder="備註">
+            </div>
+            <div id="editGridArea" class="grid-container"></div>
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: center;">
+            <button onclick="saveEdit()" class="edit-btn">💾 儲存修改內容</button>
+            <button onclick="cancelEdit()" class="danger">❌ 取消不儲存</button>
+        </div>
+    </div>
+
+    <div class="card" id="historyCardContainer">
+        <div class="history-header">
+            <h2 class="history-title">📚 歷史總表</h2>
+            <div class="filter-group hide-on-export">
+                <input type="text" id="searchKeyword" placeholder="🔍 搜尋標題..." style="width: 130px;" onkeypress="if(event.key === 'Enter') applyFilter()">
+                <span style="color:#ccc; margin: 0 5px;">|</span>
+                <input type="month" id="filterStart">
+                <label style="color:#666;">～</label>
+                <input type="month" id="filterEnd">
+                <button onclick="applyFilter()" style="padding: 6px 12px; font-size: 14px;">🔍 查詢</button>
+                <button onclick="showAllRecords()" class="all-btn" style="padding: 6px 12px; font-size: 14px;">📂 全部</button>
+            </div>
+            <button class="export-btn" onclick="exportToImage()">📸 輸出成圖檔</button>
+        </div>
+        <div id="captureArea" style="background: white; padding: 10px; border-radius: 8px;">
+            <div style="overflow-x: auto;">
+                <table id="historyTable">
+                    <thead>
+                        <tr>
+                            <th>日期</th>
+                            <th style="width: 1%;">班級 (人數)</th>
+                            <th>標題 / 備註</th>
+                            <th>已交</th>
+                            <th>免交</th>
+                            <th>未交</th>
+                            <th class="hide-on-export" style="width: 1%;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSetsData = [];
+        let editSubmittedSet = new Set(), editExemptSet = new Set(), editingRecordId = null;
+        let isShowingAll = false;
+
+        // 🌱 語音辨識專用變數
+        let recognition = null;
+        let isListening = false;
+
+        const lastClassName = localStorage.getItem('sproutLastClassName');
+        const lastStudentCount = localStorage.getItem('sproutLastStudentCount');
+        if (lastClassName) document.getElementById('className').value = lastClassName;
+        if (lastStudentCount) document.getElementById('studentCount').value = lastStudentCount;
+
+        initFilterDates();
+        loadHistory();
+
+        function initFilterDates() {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            let mm = today.getMonth() + 1;
+            if (mm < 10) mm = '0' + mm;
+            const currentMonth = `${yyyy}-${mm}`;
+            document.getElementById('filterStart').value = currentMonth;
+            document.getElementById('filterEnd').value = currentMonth;
+        }
+
+        function applyFilter() { isShowingAll = false; loadHistory(); }
+
+        function showAllRecords() {
+            isShowingAll = true;
+            document.getElementById('filterStart').value = '';
+            document.getElementById('filterEnd').value = '';
+            document.getElementById('searchKeyword').value = '';
+            loadHistory();
+        }
+
+        function generateTracker() {
+            const className = document.getElementById('className').value;
+            const count = parseInt(document.getElementById('studentCount').value);
+            const sets = parseInt(document.getElementById('setCount').value);
+            if (!className || count < 1) return alert("請輸入正確資料唷！");
+
+            localStorage.setItem('sproutLastClassName', className);
+            localStorage.setItem('sproutLastStudentCount', count);
+
+            const gridsArea = document.getElementById('gridsArea');
+            gridsArea.innerHTML = '';
+            currentSetsData = [];
+            const today = new Date().toISOString().split('T')[0];
+
+            for (let s = 0; s < sets; s++) {
+                currentSetsData.push({ submitted: new Set(), exempt: new Set() }); 
+                const setBox = document.createElement('div');
+                setBox.className = 'set-box';
+                setBox.innerHTML = `
+                    <div class="set-header">
+                        <strong>組別 #${s + 1}</strong>
+                        <input type="date" id="date-${s}" value="${today}">
+                        <input type="text" id="title-${s}" placeholder="標題 (必填)">
+                        <input type="text" id="memo-${s}" placeholder="備註 (選填)">
+                    </div>
+                    <div class="grid-container" id="grid-${s}"></div>
+                `;
+                gridsArea.appendChild(setBox);
+                const grid = setBox.querySelector(`#grid-${s}`);
+                for (let i = 1; i <= count; i++) {
+                    const btn = document.createElement('div');
+                    btn.className = 'num-btn';
+                    btn.textContent = i;
+                    btn.onclick = function() {
+                        if (!this.classList.contains('active') && !this.classList.contains('exempt')) {
+                            this.classList.add('active'); currentSetsData[s].submitted.add(i);
+                        } else if (this.classList.contains('active')) {
+                            this.classList.remove('active'); this.classList.add('exempt');
+                            currentSetsData[s].submitted.delete(i); currentSetsData[s].exempt.add(i);
+                        } else {
+                            this.classList.remove('exempt'); currentSetsData[s].exempt.delete(i);
+                        }
+                    };
+                    grid.appendChild(btn);
+                }
+            }
+            document.getElementById('setupCard').style.display = 'none';
+            document.getElementById('trackerCard').style.display = 'block';
+        }
+
+        function resetTracker() { 
+            stopVoiceRecognition(); // 退出時停止語音
+            document.getElementById('setupCard').style.display = 'block'; 
+            document.getElementById('trackerCard').style.display = 'none'; 
+        }
+
+        function saveRecord() {
+            const className = document.getElementById('className').value;
+            const total = document.getElementById('studentCount').value;
+            let records = JSON.parse(localStorage.getItem('sproutRecords')) || [];
+            let lastSavedMonth = '';
+
+            for (let s = 0; s < currentSetsData.length; s++) {
+                const title = document.getElementById(`title-${s}`).value.trim();
+                const recordDate = document.getElementById(`date-${s}`).value;
+                if (!title) { alert(`請輸入第 ${s + 1} 組標題`); return; }
+                
+                records.push({
+                    id: Date.now() + s, date: recordDate,
+                    className: className, title: title, memo: document.getElementById(`memo-${s}`).value.trim(),
+                    total: total, submitted: Array.from(currentSetsData[s].submitted).sort((a, b) => a - b),
+                    exempt: Array.from(currentSetsData[s].exempt).sort((a, b) => a - b)
+                });
+                lastSavedMonth = recordDate.substring(0, 7); 
+            }
+            localStorage.setItem('sproutRecords', JSON.stringify(records));
+            
+            stopVoiceRecognition(); // 存檔後停止語音
+            alert("✨ 儲存成功！"); 
+            
+            if (!isShowingAll) {
+                document.getElementById('filterStart').value = lastSavedMonth;
+                document.getElementById('filterEnd').value = lastSavedMonth;
+            }
+            resetTracker(); loadHistory();
+        }
+
+        // ==============================
+        // 🌱 語音辨識核心魔法
+        // ==============================
+        function toggleVoiceRecognition() {
+            // 檢查瀏覽器是否支援
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                alert("小豆芽提醒：妳的瀏覽器目前不支援語音功能喔！建議使用最新版的 Google Chrome 瀏覽器。");
+                return;
+            }
+
+            if (isListening) {
+                stopVoiceRecognition();
+            } else {
+                startVoiceRecognition();
+            }
+        }
+
+        function startVoiceRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!recognition) {
+                recognition = new SpeechRecognition();
+                recognition.continuous = true; // 持續聆聽
+                recognition.interimResults = false;
+                recognition.lang = 'zh-TW'; // 設定為中文
+
+                recognition.onstart = function() {
+                    isListening = true;
+                    const btn = document.getElementById('voiceBtn');
+                    btn.innerHTML = '🛑 停止語音 (正在聆聽...)';
+                    btn.classList.add('listening');
+                    document.getElementById('voiceStatus').innerHTML = '👂 小豆芽正在聽... 請直接念出座號 (例如: "1號", "15")';
+                };
+
+                recognition.onresult = function(event) {
+                    let transcript = event.results[event.results.length - 1][0].transcript;
+                    processVoiceCommand(transcript);
+                };
+
+                recognition.onerror = function(event) {
+                    console.error("語音錯誤:", event.error);
+                    if (event.error === 'not-allowed') {
+                        document.getElementById('voiceStatus').innerHTML = '⚠️ 瀏覽器被拒絕使用麥克風囉，請在網址列旁邊允許麥克風權限！';
+                        stopVoiceRecognition();
+                    }
+                };
+
+                recognition.onend = function() {
+                    // 如果沒有手動關閉，讓它自動繼續聽
+                    if (isListening) {
+                        recognition.start();
+                    }
+                };
+            }
+            recognition.start();
+        }
+
+        function stopVoiceRecognition() {
+            isListening = false;
+            if (recognition) {
+                recognition.stop();
+            }
+            const btn = document.getElementById('voiceBtn');
+            btn.innerHTML = '🎤 開啟語音點名';
+            btn.classList.remove('listening');
+            document.getElementById('voiceStatus').innerHTML = '語音已暫停。點擊上方按鈕隨時可以重新開始！';
+        }
+
+        function processVoiceCommand(text) {
+            // 抓取句子裡的「所有數字」
+            let numbers = text.match(/\d+/g);
+            if (numbers) {
+                let maxCount = parseInt(document.getElementById('studentCount').value);
+                let clickedNums = [];
+                
+                numbers.forEach(numStr => {
+                    let num = parseInt(numStr);
+                    if (num >= 1 && num <= maxCount) {
+                        // 預設將語音輸入應用在「第一組表單 (grid-0)」
+                        const grid = document.getElementById('grid-0');
+                        if (grid) {
+                            const btns = grid.querySelectorAll('.num-btn');
+                            const targetBtn = btns[num - 1]; // 因為是從 1 開始
+                            
+                            // 💡 只有在「未交(灰色)」狀態時，語音才會幫忙點擊變成「已交(綠色)」
+                            if (targetBtn && !targetBtn.classList.contains('active') && !targetBtn.classList.contains('exempt')) {
+                                targetBtn.click();
+                                clickedNums.push(num);
+                            }
+                        }
+                    }
+                });
+                
+                if (clickedNums.length > 0) {
+                    document.getElementById('voiceStatus').innerHTML = `✅ 聽到「${text}」👉 <span style="color:var(--primary);">已自動勾選: ${clickedNums.join(', ')}</span>`;
+                } else {
+                    document.getElementById('voiceStatus').innerHTML = `🤔 聽到「${text}」，但這些號碼已經點過了喔！`;
+                }
+            } else {
+                document.getElementById('voiceStatus').innerHTML = `🤔 聽到「${text}」，但小豆芽沒有抓到數字喔！請再說一次。`;
+            }
+        }
+        // ==============================
+
+        function editRecord(id) {
+            let records = JSON.parse(localStorage.getItem('sproutRecords')) || [];
+            const r = records.find(record => record.id === id);
+            if (!r) return;
+            editingRecordId = id; editSubmittedSet = new Set(r.submitted); editExemptSet = new Set(r.exempt || []);
+            document.getElementById('editDate').value = r.date; document.getElementById('editTitle').value = r.title; document.getElementById('editMemo').value = r.memo || '';
+            const grid = document.getElementById('editGridArea');
+            grid.innerHTML = '';
+            for (let i = 1; i <= r.total; i++) {
+                const btn = document.createElement('div');
+                btn.className = 'num-btn'; btn.textContent = i;
+                if (editSubmittedSet.has(i)) btn.classList.add('active'); else if (editExemptSet.has(i)) btn.classList.add('exempt');
+                btn.onclick = function() {
+                    if (!this.classList.contains('active') && !this.classList.contains('exempt')) { this.classList.add('active'); editSubmittedSet.add(i); }
+                    else if (this.classList.contains('active')) { this.classList.remove('active'); this.classList.add('exempt'); editSubmittedSet.delete(i); editExemptSet.add(i); }
+                    else { this.classList.remove('exempt'); editExemptSet.delete(i); }
+                };
+                grid.appendChild(btn);
+            }
+            document.getElementById('setupCard').style.display = 'none'; document.getElementById('historyCardContainer').style.display = 'none'; document.getElementById('editCard').style.display = 'block';
+        }
+
+        function saveEdit() {
+            let records = JSON.parse(localStorage.getItem('sproutRecords')) || [];
+            const idx = records.findIndex(r => r.id === editingRecordId);
+            if (idx !== -1) {
+                records[idx].date = document.getElementById('editDate').value; records[idx].title = document.getElementById('editTitle').value.trim();
+                records[idx].memo = document.getElementById('editMemo').value.trim(); records[idx].submitted = Array.from(editSubmittedSet).sort((a, b) => a - b);
+                records[idx].exempt = Array.from(editExemptSet).sort((a, b) => a - b);
+                localStorage.setItem('sproutRecords', JSON.stringify(records)); alert("✨ 修改成功！");
+            }
+            cancelEdit(); loadHistory();
+        }
+
+        function cancelEdit() { document.getElementById('editCard').style.display = 'none'; document.getElementById('setupCard').style.display = 'block'; document.getElementById('historyCardContainer').style.display = 'block'; }
+
+        function loadHistory() {
+            const tbody = document.getElementById('historyTableBody');
+            tbody.innerHTML = '';
+            let records = JSON.parse(localStorage.getItem('sproutRecords')) || [];
+            
+            const keyword = document.getElementById('searchKeyword').value.trim().toLowerCase();
+            
+            records = records.filter(r => {
+                let keywordMatch = true;
+                if (keyword) keywordMatch = r.title.toLowerCase().includes(keyword);
+
+                let dateMatch = true;
+                if (!isShowingAll) {
+                    const startMonth = document.getElementById('filterStart').value;
+                    const endMonth = document.getElementById('filterEnd').value;
+                    const recordMonth = r.date.substring(0, 7);
+                    if (startMonth && endMonth) dateMatch = (recordMonth >= startMonth && recordMonth <= endMonth);
+                    else if (startMonth) dateMatch = (recordMonth >= startMonth);
+                    else if (endMonth) dateMatch = (recordMonth <= endMonth);
+                }
+                return keywordMatch && dateMatch;
+            });
+
+            records.sort((a, b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
+            
+            records.forEach(r => {
+                const exempt = r.exempt || [];
+                let unhandedArray = [];
+                for (let i = 1; i <= r.total; i++) {
+                    if (!r.submitted.includes(i) && !exempt.includes(i)) unhandedArray.push(i);
+                }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><small>${r.date}</small></td>
+                    <td>${r.className}<br><small>(${r.total} 人)</small></td>
+                    <td><strong>${r.title}</strong>${r.memo ? `<br><small>📝 ${r.memo}</small>` : ''}</td>
+                    <td style="color:var(--primary); font-weight:bold;">${r.submitted.length} 人<br><small>(${r.submitted.join(', ') || '無'})</small></td>
+                    <td style="color:var(--exempt); font-weight:bold;">${exempt.length} 人<br><small>(${exempt.join(', ') || '無'})</small></td>
+                    <td style="color:#d32f2f; font-weight:bold;">${unhandedArray.length} 人<br><small>(${unhandedArray.join(', ') || '無'})</small></td>
+                    <td class="hide-on-export">
+                        <div class="action-btns">
+                            <button class="edit-btn" onclick="editRecord(${r.id})" style="padding:4px 10px; font-size:13px;">修改</button> 
+                            <button class="danger" onclick="deleteRecord(${r.id})" style="padding:4px 10px; font-size:13px;">刪除</button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            if (!records.length) {
+                const msg = "找不到符合條件的紀錄喔！";
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 20px; color:#666;">${msg}</td></tr>`;
+            }
+        }
+
+        function deleteRecord(id) { if (confirm("確定刪除這筆紀錄嗎？")) { let records = JSON.parse(localStorage.getItem('sproutRecords')).filter(r => r.id !== id); localStorage.setItem('sproutRecords', JSON.stringify(records)); loadHistory(); } }
+
+        function exportToImage() {
+            const captureArea = document.getElementById('captureArea');
+            const exportBtns = document.querySelectorAll('.hide-on-export');
+            exportBtns.forEach(btn => btn.style.display = 'none');
+
+            html2canvas(captureArea, { backgroundColor: "#ffffff", scale: 2 }).then(canvas => {
+                const link = document.createElement('a');
+                const today = new Date().toISOString().slice(0, 10);
+                link.download = `班級登記總表_${today}.png`;
+                link.href = canvas.toDataURL("image/png");
+                link.click();
+                exportBtns.forEach(btn => btn.style.display = 'table-cell');
+                alert("📸 總表圖檔已產生並下載囉！");
+            });
+        }
+    </script>
+</body>
+</html>
