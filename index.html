@@ -32,36 +32,17 @@
             margin-bottom: 20px;
         }
         
-        .inline-setup {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            align-items: center;
-            justify-content: center;
-        }
-        .form-group {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
+        .inline-setup { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; }
+        .form-group { display: flex; align-items: center; gap: 5px; }
         label { font-weight: bold; color: #555; font-size: 14px;}
         input[type="text"], input[type="number"], input[type="date"], input[type="month"] {
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
+            padding: 8px; border: 1px solid #ccc; border-radius: 6px;
         }
         
         button {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 15px;
-            font-weight: bold;
-            transition: 0.2s;
-            white-space: nowrap;
+            background-color: var(--primary); color: white; border: none; padding: 8px 16px;
+            border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: bold;
+            transition: 0.2s; white-space: nowrap;
         }
         button:hover { background-color: #45a049; transform: scale(1.02); }
         button.danger { background-color: #f44336; }
@@ -83,60 +64,32 @@
             100% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0); }
         }
 
-        .set-box {
-            border: 2px dashed #81C784;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            background-color: #fafafa;
-        }
-        .set-header {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 15px;
-            align-items: center;
-            border-bottom: 2px solid var(--primary-light);
-            padding-bottom: 10px;
-        }
+        .set-box { border: 2px dashed #81C784; padding: 15px; border-radius: 10px; margin-bottom: 20px; background-color: #fafafa; }
+        .set-header { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; align-items: center; border-bottom: 2px solid var(--primary-light); padding-bottom: 10px; }
         .set-header input { flex: 1; min-width: 120px; }
         
-        .grid-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(45px, 1fr));
-            gap: 8px;
-        }
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(45px, 1fr)); gap: 8px; }
         .num-btn {
-            background-color: white;
-            color: #666;
-            border: 2px solid #ddd;
-            border-radius: 50%;
-            width: 45px;
-            height: 45px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            user-select: none;
-            transition: 0.1s;
+            background-color: white; color: #666; border: 2px solid #ddd; border-radius: 50%;
+            width: 45px; height: 45px; display: flex; justify-content: center; align-items: center;
+            font-size: 16px; font-weight: bold; cursor: pointer; user-select: none; transition: 0.1s;
         }
         .num-btn.active { background-color: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 0 8px rgba(76, 175, 80, 0.5); }
         .num-btn.exempt { background-color: var(--exempt); color: white; border-color: var(--exempt); }
         .edit-mode .num-btn.active { background-color: var(--edit-color); border-color: var(--edit-color); }
         
+        /* 動態突顯剛被語音點到的號碼 */
+        .num-btn.just-clicked { animation: popHighlight 0.5s ease-out; }
+        @keyframes popHighlight {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.4); box-shadow: 0 0 15px var(--primary); }
+            100% { transform: scale(1); }
+        }
+
         .history-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            background-color: var(--primary-light);
-            padding: 12px 15px;
-            border-radius: 8px;
-            border: 1px solid #c8e6c9;
-            margin-bottom: 15px;
-            gap: 10px;
+            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+            background-color: var(--primary-light); padding: 12px 15px; border-radius: 8px;
+            border: 1px solid #c8e6c9; margin-bottom: 15px; gap: 10px;
         }
         .history-title { margin: 0; color: var(--primary); font-size: 20px; white-space: nowrap; }
         .filter-group { display: flex; align-items: center; gap: 8px; flex: 1; justify-content: center; flex-wrap: wrap; }
@@ -174,7 +127,7 @@
         
         <div style="text-align: center; margin-bottom: 15px; background: #e3f2fd; padding: 15px; border-radius: 8px; border: 2px dashed #90caf9;">
             <button id="voiceBtn" class="voice-btn" onclick="toggleVoiceRecognition()">🎤 開啟語音點名</button>
-            <div id="voiceStatus" style="color: #1976D2; font-size: 14px; margin-top: 10px; font-weight: bold; min-height: 20px;">
+            <div id="voiceStatus" style="color: #1976D2; font-size: 15px; margin-top: 10px; font-weight: bold; min-height: 24px; transition: 0.3s;">
                 點擊按鈕，允許麥克風後即可用語音報號喔！
             </div>
         </div>
@@ -245,6 +198,31 @@
         // 🌱 語音辨識專用變數
         let recognition = null;
         let isListening = false;
+        
+        // 🌱 音效魔法引擎 (Web Audio API)
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+
+        function playSuccessSound() {
+            if (!audioCtx) audioCtx = new AudioContext();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // 輕快的音高
+            oscillator.frequency.exponentialRampToValueAtTime(1760, audioCtx.currentTime + 0.1); 
+            
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); // 音量適中
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.1);
+        }
 
         const lastClassName = localStorage.getItem('sproutLastClassName');
         const lastStudentCount = localStorage.getItem('sproutLastStudentCount');
@@ -325,7 +303,7 @@
         }
 
         function resetTracker() { 
-            stopVoiceRecognition(); // 退出時停止語音
+            stopVoiceRecognition(); 
             document.getElementById('setupCard').style.display = 'block'; 
             document.getElementById('trackerCard').style.display = 'none'; 
         }
@@ -351,7 +329,7 @@
             }
             localStorage.setItem('sproutRecords', JSON.stringify(records));
             
-            stopVoiceRecognition(); // 存檔後停止語音
+            stopVoiceRecognition(); 
             alert("✨ 儲存成功！"); 
             
             if (!isShowingAll) {
@@ -362,41 +340,59 @@
         }
 
         // ==============================
-        // 🌱 語音辨識核心魔法
+        // 🌱 語音辨識核心魔法 (含即時回饋與音效)
         // ==============================
         function toggleVoiceRecognition() {
-            // 檢查瀏覽器是否支援
             if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
                 alert("小豆芽提醒：妳的瀏覽器目前不支援語音功能喔！建議使用最新版的 Google Chrome 瀏覽器。");
                 return;
             }
+            
+            // 點擊按鈕時初始化音效引擎 (解決瀏覽器音效權限問題)
+            if (!audioCtx) audioCtx = new AudioContext();
 
-            if (isListening) {
-                stopVoiceRecognition();
-            } else {
-                startVoiceRecognition();
-            }
+            if (isListening) stopVoiceRecognition();
+            else startVoiceRecognition();
         }
 
         function startVoiceRecognition() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!recognition) {
                 recognition = new SpeechRecognition();
-                recognition.continuous = true; // 持續聆聽
-                recognition.interimResults = false;
-                recognition.lang = 'zh-TW'; // 設定為中文
+                recognition.continuous = true; 
+                recognition.interimResults = true; // 開啟「讀唇語」即時草稿功能！
+                recognition.lang = 'zh-TW'; 
 
                 recognition.onstart = function() {
                     isListening = true;
                     const btn = document.getElementById('voiceBtn');
                     btn.innerHTML = '🛑 停止語音 (正在聆聽...)';
                     btn.classList.add('listening');
-                    document.getElementById('voiceStatus').innerHTML = '👂 小豆芽正在聽... 請直接念出座號 (例如: "1號", "15")';
+                    document.getElementById('voiceStatus').innerHTML = '👂 小豆芽聽命！請直接念出座號...';
                 };
 
                 recognition.onresult = function(event) {
-                    let transcript = event.results[event.results.length - 1][0].transcript;
-                    processVoiceCommand(transcript);
+                    let interimTranscript = '';
+                    let finalTranscript = '';
+
+                    // 拆分出「還在猶豫的草稿」跟「已經確認的結果」
+                    for (let i = event.resultIndex; i < event.results.length; ++i) {
+                        if (event.results[i].isFinal) {
+                            finalTranscript += event.results[i][0].transcript;
+                        } else {
+                            interimTranscript += event.results[i][0].transcript;
+                        }
+                    }
+
+                    // 畫面上顯示即時的淺色草稿，給予強烈安心感
+                    if (interimTranscript) {
+                        document.getElementById('voiceStatus').innerHTML = `💬 努力聽取中：<span style="color:#aaa;">"${interimTranscript}"</span>`;
+                    }
+
+                    // 確定的句子才送去處理
+                    if (finalTranscript) {
+                        processVoiceCommand(finalTranscript);
+                    }
                 };
 
                 recognition.onerror = function(event) {
@@ -408,10 +404,7 @@
                 };
 
                 recognition.onend = function() {
-                    // 如果沒有手動關閉，讓它自動繼續聽
-                    if (isListening) {
-                        recognition.start();
-                    }
+                    if (isListening) recognition.start();
                 };
             }
             recognition.start();
@@ -419,9 +412,7 @@
 
         function stopVoiceRecognition() {
             isListening = false;
-            if (recognition) {
-                recognition.stop();
-            }
+            if (recognition) recognition.stop();
             const btn = document.getElementById('voiceBtn');
             btn.innerHTML = '🎤 開啟語音點名';
             btn.classList.remove('listening');
@@ -429,7 +420,6 @@
         }
 
         function processVoiceCommand(text) {
-            // 抓取句子裡的「所有數字」
             let numbers = text.match(/\d+/g);
             if (numbers) {
                 let maxCount = parseInt(document.getElementById('studentCount').value);
@@ -438,28 +428,32 @@
                 numbers.forEach(numStr => {
                     let num = parseInt(numStr);
                     if (num >= 1 && num <= maxCount) {
-                        // 預設將語音輸入應用在「第一組表單 (grid-0)」
                         const grid = document.getElementById('grid-0');
                         if (grid) {
                             const btns = grid.querySelectorAll('.num-btn');
-                            const targetBtn = btns[num - 1]; // 因為是從 1 開始
+                            const targetBtn = btns[num - 1]; 
                             
-                            // 💡 只有在「未交(灰色)」狀態時，語音才會幫忙點擊變成「已交(綠色)」
                             if (targetBtn && !targetBtn.classList.contains('active') && !targetBtn.classList.contains('exempt')) {
                                 targetBtn.click();
                                 clickedNums.push(num);
+                                
+                                // 加入視覺跳動特效
+                                targetBtn.classList.add('just-clicked');
+                                setTimeout(() => targetBtn.classList.remove('just-clicked'), 500);
                             }
                         }
                     }
                 });
                 
                 if (clickedNums.length > 0) {
-                    document.getElementById('voiceStatus').innerHTML = `✅ 聽到「${text}」👉 <span style="color:var(--primary);">已自動勾選: ${clickedNums.join(', ')}</span>`;
+                    // 成功點擊時，發出「波」一聲！
+                    playSuccessSound();
+                    document.getElementById('voiceStatus').innerHTML = `✅ 聽到「${text}」👉 <span style="color:var(--primary); font-size:18px;">成功勾選: ${clickedNums.join(', ')}</span>`;
                 } else {
                     document.getElementById('voiceStatus').innerHTML = `🤔 聽到「${text}」，但這些號碼已經點過了喔！`;
                 }
             } else {
-                document.getElementById('voiceStatus').innerHTML = `🤔 聽到「${text}」，但小豆芽沒有抓到數字喔！請再說一次。`;
+                document.getElementById('voiceStatus').innerHTML = `🤔 確定句子「${text}」，但裡面沒有數字喔！`;
             }
         }
         // ==============================
