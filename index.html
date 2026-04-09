@@ -97,7 +97,6 @@
         th { background-color: var(--primary-light); color: var(--primary); white-space: nowrap; }
 
         /* 🚀 零空間佔用：三階層任務呼吸燈能量條 (圖檔高對比版) */
-        
         .tr-cleared { background-color: #f6fdf8; }
         .tr-cleared td:first-child {
             border-left: 6px solid #00C853 !important; 
@@ -520,7 +519,6 @@
             const keyword = document.getElementById('searchKeyword').value.trim().toLowerCase();
             const todayStr = new Date().toISOString().split('T')[0];
             
-            // 過濾邏輯
             records = records.filter(r => {
                 let keywordMatch = true;
                 if (keyword) keywordMatch = r.title.toLowerCase().includes(keyword);
@@ -537,7 +535,6 @@
                 return keywordMatch && dateMatch;
             });
 
-            // 🚀 大腦升級：預先計算每個任務的狀態與優先級
             records.forEach(r => {
                 const exempt = r.exempt || [];
                 let unhandedCount = 0;
@@ -548,22 +545,18 @@
                 r.isCleared = (unhandedCount === 0);
                 r.isOverdue = (!r.isCleared && r.dueDate && todayStr > r.dueDate);
                 
-                // 賦予排序權重：1最緊急(紅) -> 2進行中(藍) -> 3已完成(綠)
                 if (r.isOverdue) r.sortPriority = 1;
                 else if (!r.isCleared) r.sortPriority = 2;
                 else r.sortPriority = 3;
             });
 
-            // 🚀 全新排序邏輯：優先比對狀態權重，狀態相同再比日期
             records.sort((a, b) => {
                 if (a.sortPriority !== b.sortPriority) {
                     return a.sortPriority - b.sortPriority; 
                 }
-                // 同顏色下，日期比較新的排上面
                 return new Date(b.date) - new Date(a.date) || b.id - a.id;
             });
 
-            // 渲染表格
             records.forEach(r => {
                 const exempt = r.exempt || [];
                 let unhandedArray = [];
@@ -609,19 +602,34 @@
 
         function deleteRecord(id) { if (confirm("確定刪除這筆紀錄嗎？")) { let records = JSON.parse(localStorage.getItem('sproutRecords')).filter(r => r.id !== id); localStorage.setItem('sproutRecords', JSON.stringify(records)); loadHistory(); } }
 
+        // 🚀 無痕影分身截圖 ＋ 純粹「另存新檔」魔法
         function exportToImage() {
             const captureArea = document.getElementById('captureArea');
-            const exportBtns = document.querySelectorAll('.hide-on-export');
+            const voiceStatus = document.getElementById('voiceStatus');
             
-            exportBtns.forEach(btn => btn.style.display = 'none');
+            let originalStatus = "點擊按鈕，允許麥克風後即可用語音報號喔！";
+            if(voiceStatus) {
+                originalStatus = voiceStatus.innerHTML;
+                voiceStatus.innerHTML = "⌛ 正在產生高品質圖檔，請稍候...";
+            }
 
-            html2canvas(captureArea, { backgroundColor: "#ffffff", scale: 2 }).then(canvas => {
-                exportBtns.forEach(btn => btn.style.display = 'table-cell');
+            html2canvas(captureArea, { 
+                backgroundColor: "#ffffff", 
+                scale: 2,
+                useCORS: true,
+                onclone: function(clonedDoc) {
+                    // 在分身網頁裡把按鈕隱藏，不干擾真實畫面！
+                    const exportBtns = clonedDoc.querySelectorAll('.hide-on-export');
+                    exportBtns.forEach(btn => btn.style.display = 'none');
+                }
+            }).then(canvas => {
+                if(voiceStatus) voiceStatus.innerHTML = originalStatus;
                 
                 canvas.toBlob(async function(blob) {
                     const today = new Date().toISOString().slice(0, 10);
                     const defaultFileName = `班級登記總表_${today}.png`;
 
+                    // 👉 只保留：電腦版呼叫「另存新檔」視窗
                     if (window.showSaveFilePicker) {
                         try {
                             const fileHandle = await window.showSaveFilePicker({
@@ -633,11 +641,14 @@
                             await writable.close();
                             alert("📸 總表圖檔已成功儲存到您指定的位置！");
                         } catch (error) {
+                            // 使用者按取消時，不做任何事
                             if (error.name !== 'AbortError') {
                                 fallbackDownload(blob, defaultFileName);
                             }
                         }
-                    } else {
+                    } 
+                    // 👉 備用方案：傳統自動下載 (不支援 showSaveFilePicker 的瀏覽器)
+                    else {
                         fallbackDownload(blob, defaultFileName);
                     }
                 }, 'image/png');
@@ -650,7 +661,7 @@
             link.href = URL.createObjectURL(blob);
             link.click();
             URL.revokeObjectURL(link.href);
-            alert("📸 總表圖檔已下載！\n\n(💡小提醒：若未跳出選擇位置的視窗，是因為瀏覽器預設開啟了『自動下載』。可至瀏覽器設定中開啟「下載前詢問每個檔案的儲存位置」喔！)");
+            alert("📸 總表圖檔已下載！\n\n(💡小提醒：若未跳出選擇位置的視窗，是因為您的瀏覽器設定開啟了『自動下載』，圖檔已直接存入下載資料夾。)");
         }
     </script>
 </body>
