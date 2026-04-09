@@ -53,7 +53,6 @@
         button.all-btn { background-color: #607D8B; }
         button.all-btn:hover { background-color: #455A64; }
         
-        /* 語音按鈕專屬樣式 */
         button.voice-btn { background-color: #2196F3; font-size: 16px; width: 100%; max-width: 300px;}
         button.voice-btn:hover { background-color: #1976D2; }
         button.voice-btn.listening { background-color: #f44336; animation: pulse 1.5s infinite; }
@@ -65,7 +64,7 @@
         }
 
         .set-box { border: 2px dashed #81C784; padding: 15px; border-radius: 10px; margin-bottom: 20px; background-color: #fafafa; }
-        .set-header { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; align-items: center; border-bottom: 2px solid var(--primary-light); padding-bottom: 10px; }
+        .set-header { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 15px; align-items: center; border-bottom: 2px solid var(--primary-light); padding-bottom: 10px; }
         .set-header input { flex: 1; min-width: 120px; }
         
         .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(45px, 1fr)); gap: 8px; }
@@ -78,7 +77,6 @@
         .num-btn.exempt { background-color: var(--exempt); color: white; border-color: var(--exempt); }
         .edit-mode .num-btn.active { background-color: var(--edit-color); border-color: var(--edit-color); }
         
-        /* 動態突顯剛被語音點到的號碼 */
         .num-btn.just-clicked { animation: popHighlight 0.5s ease-out; }
         @keyframes popHighlight {
             0% { transform: scale(1); }
@@ -97,6 +95,31 @@
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; background: white; }
         th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
         th { background-color: var(--primary-light); color: var(--primary); white-space: nowrap; }
+
+        /* 🚀 零空間佔用：三階層任務呼吸燈能量條 (圖檔高對比版) */
+        
+        .tr-cleared { background-color: #f6fdf8; }
+        .tr-cleared td:first-child {
+            border-left: 6px solid #00C853 !important; 
+            box-shadow: inset 6px 0 10px rgba(0, 200, 83, 0.15);
+        }
+
+        .tr-pending { background-color: #ffffff; }
+        .tr-pending td:first-child {
+            border-left: 6px solid #2196F3 !important; 
+            box-shadow: inset 6px 0 10px rgba(33, 150, 243, 0.15);
+        }
+
+        .tr-overdue { background-color: #fffafa; }
+        .tr-overdue td:first-child {
+            border-left: 6px solid #ff3366 !important; 
+            animation: energyAlert 1.2s infinite alternate ease-in-out;
+        }
+
+        @keyframes energyAlert {
+            0% { border-left-color: #ff3366; box-shadow: inset 2px 0 5px rgba(255, 51, 102, 0.2); }
+            100% { border-left-color: #ff88aa; box-shadow: inset 12px 0 20px rgba(255, 51, 102, 0.7); }
+        }
         
         .legend { display: flex; justify-content: center; gap: 15px; margin-bottom: 10px; font-size: 13px; color: #666; }
         .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
@@ -144,9 +167,16 @@
         <h2 style="color: var(--edit-color); font-size: 20px;">✏️ 修改紀錄模式</h2>
         <div class="set-box" style="border-color: var(--edit-color); background-color: var(--edit-light);">
             <div class="set-header">
-                <input type="date" id="editDate">
-                <input type="text" id="editTitle">
-                <input type="text" id="editMemo" placeholder="備註">
+                <input type="text" id="editTitle" placeholder="標題" style="flex:2; min-width: 150px;">
+                <div style="display: flex; gap: 5px; align-items: center;">
+                    <span style="font-size: 13px; color: #666; white-space: nowrap;">📝 發放</span>
+                    <input type="date" id="editDate" style="padding: 6px;">
+                </div>
+                <div style="display: flex; gap: 5px; align-items: center;">
+                    <span style="font-size: 13px; color: #666; white-space: nowrap;">⏳ 截止</span>
+                    <input type="date" id="editDueDate" style="padding: 6px;">
+                </div>
+                <input type="text" id="editMemo" placeholder="備註" style="flex:1; min-width: 120px;">
             </div>
             <div id="editGridArea" class="grid-container"></div>
         </div>
@@ -175,7 +205,7 @@
                 <table id="historyTable">
                     <thead>
                         <tr>
-                            <th>日期</th>
+                            <th>狀態 / 日期</th>
                             <th style="width: 1%;">班級 (人數)</th>
                             <th>標題 / 備註</th>
                             <th>已交</th>
@@ -195,11 +225,9 @@
         let editSubmittedSet = new Set(), editExemptSet = new Set(), editingRecordId = null;
         let isShowingAll = false;
 
-        // 🌱 語音辨識專用變數
         let recognition = null;
         let isListening = false;
         
-        // 🌱 音效魔法引擎 (Web Audio API)
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx;
 
@@ -211,10 +239,10 @@
             const gainNode = audioCtx.createGain();
             
             oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // 輕快的音高
+            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
             oscillator.frequency.exponentialRampToValueAtTime(1760, audioCtx.currentTime + 0.1); 
             
-            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); // 音量適中
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
             gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
             
             oscillator.connect(gainNode);
@@ -272,10 +300,19 @@
                 setBox.className = 'set-box';
                 setBox.innerHTML = `
                     <div class="set-header">
-                        <strong>組別 #${s + 1}</strong>
-                        <input type="date" id="date-${s}" value="${today}">
-                        <input type="text" id="title-${s}" placeholder="標題 (必填)">
-                        <input type="text" id="memo-${s}" placeholder="備註 (選填)">
+                        <strong style="white-space: nowrap;">組別 #${s + 1}</strong>
+                        <input type="text" id="title-${s}" placeholder="標題 (必填)" style="flex:2; min-width: 150px;">
+                        
+                        <div style="display: flex; gap: 5px; align-items: center;">
+                            <span style="font-size: 13px; color: #666; white-space: nowrap;">📝 發放</span>
+                            <input type="date" id="date-${s}" value="${today}" style="padding: 6px;">
+                        </div>
+                        <div style="display: flex; gap: 5px; align-items: center;">
+                            <span style="font-size: 13px; color: #666; white-space: nowrap;">⏳ 截止</span>
+                            <input type="date" id="dueDate-${s}" style="padding: 6px;">
+                        </div>
+                        
+                        <input type="text" id="memo-${s}" placeholder="備註 (選填)" style="flex:1; min-width: 120px;">
                     </div>
                     <div class="grid-container" id="grid-${s}"></div>
                 `;
@@ -317,10 +354,12 @@
             for (let s = 0; s < currentSetsData.length; s++) {
                 const title = document.getElementById(`title-${s}`).value.trim();
                 const recordDate = document.getElementById(`date-${s}`).value;
+                const recordDueDate = document.getElementById(`dueDate-${s}`).value;
+                
                 if (!title) { alert(`請輸入第 ${s + 1} 組標題`); return; }
                 
                 records.push({
-                    id: Date.now() + s, date: recordDate,
+                    id: Date.now() + s, date: recordDate, dueDate: recordDueDate,
                     className: className, title: title, memo: document.getElementById(`memo-${s}`).value.trim(),
                     total: total, submitted: Array.from(currentSetsData[s].submitted).sort((a, b) => a - b),
                     exempt: Array.from(currentSetsData[s].exempt).sort((a, b) => a - b)
@@ -339,16 +378,11 @@
             resetTracker(); loadHistory();
         }
 
-        // ==============================
-        // 🌱 語音辨識核心魔法 (含即時回饋與音效)
-        // ==============================
         function toggleVoiceRecognition() {
             if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
                 alert("小豆芽提醒：妳的瀏覽器目前不支援語音功能喔！建議使用最新版的 Google Chrome 瀏覽器。");
                 return;
             }
-            
-            // 點擊按鈕時初始化音效引擎 (解決瀏覽器音效權限問題)
             if (!audioCtx) audioCtx = new AudioContext();
 
             if (isListening) stopVoiceRecognition();
@@ -360,7 +394,7 @@
             if (!recognition) {
                 recognition = new SpeechRecognition();
                 recognition.continuous = true; 
-                recognition.interimResults = true; // 開啟「讀唇語」即時草稿功能！
+                recognition.interimResults = true; 
                 recognition.lang = 'zh-TW'; 
 
                 recognition.onstart = function() {
@@ -374,38 +408,21 @@
                 recognition.onresult = function(event) {
                     let interimTranscript = '';
                     let finalTranscript = '';
-
-                    // 拆分出「還在猶豫的草稿」跟「已經確認的結果」
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
-                        if (event.results[i].isFinal) {
-                            finalTranscript += event.results[i][0].transcript;
-                        } else {
-                            interimTranscript += event.results[i][0].transcript;
-                        }
+                        if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
+                        else interimTranscript += event.results[i][0].transcript;
                     }
-
-                    // 畫面上顯示即時的淺色草稿，給予強烈安心感
-                    if (interimTranscript) {
-                        document.getElementById('voiceStatus').innerHTML = `💬 努力聽取中：<span style="color:#aaa;">"${interimTranscript}"</span>`;
-                    }
-
-                    // 確定的句子才送去處理
-                    if (finalTranscript) {
-                        processVoiceCommand(finalTranscript);
-                    }
+                    if (interimTranscript) document.getElementById('voiceStatus').innerHTML = `💬 努力聽取中：<span style="color:#aaa;">"${interimTranscript}"</span>`;
+                    if (finalTranscript) processVoiceCommand(finalTranscript);
                 };
 
                 recognition.onerror = function(event) {
-                    console.error("語音錯誤:", event.error);
                     if (event.error === 'not-allowed') {
                         document.getElementById('voiceStatus').innerHTML = '⚠️ 瀏覽器被拒絕使用麥克風囉，請在網址列旁邊允許麥克風權限！';
                         stopVoiceRecognition();
                     }
                 };
-
-                recognition.onend = function() {
-                    if (isListening) recognition.start();
-                };
+                recognition.onend = function() { if (isListening) recognition.start(); };
             }
             recognition.start();
         }
@@ -432,12 +449,9 @@
                         if (grid) {
                             const btns = grid.querySelectorAll('.num-btn');
                             const targetBtn = btns[num - 1]; 
-                            
                             if (targetBtn && !targetBtn.classList.contains('active') && !targetBtn.classList.contains('exempt')) {
                                 targetBtn.click();
                                 clickedNums.push(num);
-                                
-                                // 加入視覺跳動特效
                                 targetBtn.classList.add('just-clicked');
                                 setTimeout(() => targetBtn.classList.remove('just-clicked'), 500);
                             }
@@ -446,7 +460,6 @@
                 });
                 
                 if (clickedNums.length > 0) {
-                    // 成功點擊時，發出「波」一聲！
                     playSuccessSound();
                     document.getElementById('voiceStatus').innerHTML = `✅ 聽到「${text}」👉 <span style="color:var(--primary); font-size:18px;">成功勾選: ${clickedNums.join(', ')}</span>`;
                 } else {
@@ -456,14 +469,16 @@
                 document.getElementById('voiceStatus').innerHTML = `🤔 確定句子「${text}」，但裡面沒有數字喔！`;
             }
         }
-        // ==============================
 
         function editRecord(id) {
             let records = JSON.parse(localStorage.getItem('sproutRecords')) || [];
             const r = records.find(record => record.id === id);
             if (!r) return;
             editingRecordId = id; editSubmittedSet = new Set(r.submitted); editExemptSet = new Set(r.exempt || []);
-            document.getElementById('editDate').value = r.date; document.getElementById('editTitle').value = r.title; document.getElementById('editMemo').value = r.memo || '';
+            document.getElementById('editDate').value = r.date; 
+            document.getElementById('editDueDate').value = r.dueDate || ''; 
+            document.getElementById('editTitle').value = r.title; 
+            document.getElementById('editMemo').value = r.memo || '';
             const grid = document.getElementById('editGridArea');
             grid.innerHTML = '';
             for (let i = 1; i <= r.total; i++) {
@@ -484,8 +499,11 @@
             let records = JSON.parse(localStorage.getItem('sproutRecords')) || [];
             const idx = records.findIndex(r => r.id === editingRecordId);
             if (idx !== -1) {
-                records[idx].date = document.getElementById('editDate').value; records[idx].title = document.getElementById('editTitle').value.trim();
-                records[idx].memo = document.getElementById('editMemo').value.trim(); records[idx].submitted = Array.from(editSubmittedSet).sort((a, b) => a - b);
+                records[idx].date = document.getElementById('editDate').value; 
+                records[idx].dueDate = document.getElementById('editDueDate').value; 
+                records[idx].title = document.getElementById('editTitle').value.trim();
+                records[idx].memo = document.getElementById('editMemo').value.trim(); 
+                records[idx].submitted = Array.from(editSubmittedSet).sort((a, b) => a - b);
                 records[idx].exempt = Array.from(editExemptSet).sort((a, b) => a - b);
                 localStorage.setItem('sproutRecords', JSON.stringify(records)); alert("✨ 修改成功！");
             }
@@ -500,7 +518,9 @@
             let records = JSON.parse(localStorage.getItem('sproutRecords')) || [];
             
             const keyword = document.getElementById('searchKeyword').value.trim().toLowerCase();
+            const todayStr = new Date().toISOString().split('T')[0];
             
+            // 過濾邏輯
             records = records.filter(r => {
                 let keywordMatch = true;
                 if (keyword) keywordMatch = r.title.toLowerCase().includes(keyword);
@@ -517,8 +537,33 @@
                 return keywordMatch && dateMatch;
             });
 
-            records.sort((a, b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
-            
+            // 🚀 大腦升級：預先計算每個任務的狀態與優先級
+            records.forEach(r => {
+                const exempt = r.exempt || [];
+                let unhandedCount = 0;
+                for (let i = 1; i <= r.total; i++) {
+                    if (!r.submitted.includes(i) && !exempt.includes(i)) unhandedCount++;
+                }
+                
+                r.isCleared = (unhandedCount === 0);
+                r.isOverdue = (!r.isCleared && r.dueDate && todayStr > r.dueDate);
+                
+                // 賦予排序權重：1最緊急(紅) -> 2進行中(藍) -> 3已完成(綠)
+                if (r.isOverdue) r.sortPriority = 1;
+                else if (!r.isCleared) r.sortPriority = 2;
+                else r.sortPriority = 3;
+            });
+
+            // 🚀 全新排序邏輯：優先比對狀態權重，狀態相同再比日期
+            records.sort((a, b) => {
+                if (a.sortPriority !== b.sortPriority) {
+                    return a.sortPriority - b.sortPriority; 
+                }
+                // 同顏色下，日期比較新的排上面
+                return new Date(b.date) - new Date(a.date) || b.id - a.id;
+            });
+
+            // 渲染表格
             records.forEach(r => {
                 const exempt = r.exempt || [];
                 let unhandedArray = [];
@@ -526,11 +571,23 @@
                     if (!r.submitted.includes(i) && !exempt.includes(i)) unhandedArray.push(i);
                 }
 
+                let rowClass = 'tr-pending'; 
+                if (r.isCleared) rowClass = 'tr-cleared'; 
+                else if (r.isOverdue) rowClass = 'tr-overdue'; 
+
+                let dateDisplay = `<span style="color:#666;">發放: ${r.date}</span>`;
+                if (r.dueDate) {
+                    let dueColor = r.isOverdue ? '#f44336' : '#2196F3';
+                    if (r.isCleared) dueColor = '#00C853'; 
+                    dateDisplay += `<br><strong style="color:${dueColor};">截止: ${r.dueDate}</strong>`;
+                }
+
                 const tr = document.createElement('tr');
+                tr.className = rowClass; 
                 tr.innerHTML = `
-                    <td><small>${r.date}</small></td>
+                    <td style="white-space: nowrap;"><small>${dateDisplay}</small></td>
                     <td>${r.className}<br><small>(${r.total} 人)</small></td>
-                    <td><strong>${r.title}</strong>${r.memo ? `<br><small>📝 ${r.memo}</small>` : ''}</td>
+                    <td><strong>${r.title}</strong>${r.memo ? `<br><small style="color:#888;">📝 ${r.memo}</small>` : ''}</td>
                     <td style="color:var(--primary); font-weight:bold;">${r.submitted.length} 人<br><small>(${r.submitted.join(', ') || '無'})</small></td>
                     <td style="color:var(--exempt); font-weight:bold;">${exempt.length} 人<br><small>(${exempt.join(', ') || '無'})</small></td>
                     <td style="color:#d32f2f; font-weight:bold;">${unhandedArray.length} 人<br><small>(${unhandedArray.join(', ') || '無'})</small></td>
@@ -555,17 +612,45 @@
         function exportToImage() {
             const captureArea = document.getElementById('captureArea');
             const exportBtns = document.querySelectorAll('.hide-on-export');
+            
             exportBtns.forEach(btn => btn.style.display = 'none');
 
             html2canvas(captureArea, { backgroundColor: "#ffffff", scale: 2 }).then(canvas => {
-                const link = document.createElement('a');
-                const today = new Date().toISOString().slice(0, 10);
-                link.download = `班級登記總表_${today}.png`;
-                link.href = canvas.toDataURL("image/png");
-                link.click();
                 exportBtns.forEach(btn => btn.style.display = 'table-cell');
-                alert("📸 總表圖檔已產生並下載囉！");
+                
+                canvas.toBlob(async function(blob) {
+                    const today = new Date().toISOString().slice(0, 10);
+                    const defaultFileName = `班級登記總表_${today}.png`;
+
+                    if (window.showSaveFilePicker) {
+                        try {
+                            const fileHandle = await window.showSaveFilePicker({
+                                suggestedName: defaultFileName,
+                                types: [{ description: 'PNG 圖檔', accept: { 'image/png': ['.png'] } }],
+                            });
+                            const writable = await fileHandle.createWritable();
+                            await writable.write(blob);
+                            await writable.close();
+                            alert("📸 總表圖檔已成功儲存到您指定的位置！");
+                        } catch (error) {
+                            if (error.name !== 'AbortError') {
+                                fallbackDownload(blob, defaultFileName);
+                            }
+                        }
+                    } else {
+                        fallbackDownload(blob, defaultFileName);
+                    }
+                }, 'image/png');
             });
+        }
+
+        function fallbackDownload(blob, fileName) {
+            const link = document.createElement('a');
+            link.download = fileName;
+            link.href = URL.createObjectURL(blob);
+            link.click();
+            URL.revokeObjectURL(link.href);
+            alert("📸 總表圖檔已下載！\n\n(💡小提醒：若未跳出選擇位置的視窗，是因為瀏覽器預設開啟了『自動下載』。可至瀏覽器設定中開啟「下載前詢問每個檔案的儲存位置」喔！)");
         }
     </script>
 </body>
