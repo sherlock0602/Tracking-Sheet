@@ -397,7 +397,7 @@
         }
 
         // ==============================
-        // 🌱 語音辨識核心魔法 (完美倒數防護 + 透明字幕)
+        // 🌱 語音辨識核心魔法
         // ==============================
 
         function getVoiceUI() {
@@ -444,7 +444,7 @@
             } else {
                 isStandbyMode = false; 
                 startVoiceRecognition();
-                resetStandbyTimer(); 
+                // 註解：不用在這裡呼叫 resetStandbyTimer，移交給 onstart 確保麥克風已啟動
             }
         }
 
@@ -465,6 +465,9 @@
                         ui.btn.classList.remove('standby');
                         ui.btn.classList.add('listening');
                         ui.status.innerHTML = `👂 小豆芽聽命！請直接念出座號... (${STANDBY_TIME/1000}秒未念數字將自動待機保護)`;
+                        
+                        // 💡 關鍵修復：確保麥克風真的開始聽了，才啟動倒數計時！
+                        resetStandbyTimer(); 
                     }
                 };
 
@@ -483,7 +486,6 @@
                         if (!isStandbyMode) {
                             ui.status.innerHTML = `💬 努力聽取中：<span style="color:#aaa;">"${interimTranscript}"</span>`;
                         } else {
-                            // 💡 升級：待機時也能看到字幕，讓妳知道麥克風沒壞掉！
                             ui.status.innerHTML = `💤 待機中，聽到：<span style="color:#aaa;">"${interimTranscript}"</span> (說「紀錄」喚醒)`;
                         }
                     }
@@ -520,11 +522,9 @@
             }
         }
 
-        // isWakeUpCombo 用來標記是不是剛好從待機被喚醒
         function processVoiceCommand(text, isWakeUpCombo = false) {
             const ui = getVoiceUI();
 
-            // 🛑 待機模式防護網
             if (isStandbyMode) {
                 if (text.includes('紀錄') || text.includes('記錄')) {
                     isStandbyMode = false;
@@ -537,7 +537,6 @@
                     let afterWakeWord = text.substring(wakeIndex + 2);
                     
                     if (afterWakeWord.match(/\d+/g)) {
-                        // 💡 升級：有號碼的話直接帶入處理，並打上「剛喚醒」的標記
                         processVoiceCommand(afterWakeWord, true);
                     } else {
                         playSuccessSound();
@@ -547,7 +546,6 @@
                 return; 
             }
 
-            // 🟢 活躍模式
             let numbers = text.match(/\d+/g);
             if (numbers) {
                 let maxCount = isEditVoiceMode 
@@ -575,7 +573,6 @@
                 
                 if (clickedNums.length > 0) {
                     playSuccessSound();
-                    // 💡 升級：如果是一口氣喊出來的，就給妳超安心的一條龍提示
                     let prefixMsg = isWakeUpCombo ? "✨ 喚醒成功！並" : "";
                     ui.status.innerHTML = `${prefixMsg}✅ 聽到「${text}」👉 <span style="color:var(--primary); font-size:18px;">成功勾選: ${clickedNums.join(', ')}</span>`;
                 } else {
