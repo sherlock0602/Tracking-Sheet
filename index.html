@@ -234,9 +234,8 @@
 
         // ==============================
         // ⏳ 語音待機時間設定區 (毫秒)
-        // 10000 = 10秒, 15000 = 15秒, 20000 = 20秒
         // ==============================
-        const STANDBY_TIME = 15000; // 👈 妳可以在這裡隨時修改秒數！
+        const STANDBY_TIME = 15000; 
 
         // 🌱 語音辨識大腦變數
         let recognition = null;
@@ -398,7 +397,7 @@
         }
 
         // ==============================
-        // 🌱 語音辨識核心魔法 (完美倒數防護)
+        // 🌱 語音辨識核心魔法 (完美倒數防護 + 透明字幕)
         // ==============================
 
         function getVoiceUI() {
@@ -408,7 +407,6 @@
             };
         }
 
-        // 啟動倒數計時器
         function resetStandbyTimer() {
             clearTimeout(standbyTimer);
             if (isListening && !isStandbyMode) {
@@ -418,7 +416,6 @@
             }
         }
 
-        // 進入待機模式
         function enterStandbyMode() {
             if (!isListening) return;
             isStandbyMode = true;
@@ -445,9 +442,9 @@
             if (isListening) {
                 stopVoiceRecognition();
             } else {
-                isStandbyMode = false; // 只有使用者「手動點擊按鈕」時，才強制清醒
+                isStandbyMode = false; 
                 startVoiceRecognition();
-                resetStandbyTimer(); // 手動開啟時，開始第一輪倒數
+                resetStandbyTimer(); 
             }
         }
 
@@ -461,8 +458,6 @@
 
                 recognition.onstart = function() {
                     isListening = true;
-                    // 💡 修復關鍵：把 isStandbyMode = false 從這裡移除了！
-                    // 這樣就算瀏覽器偷偷換氣，也不會打斷待機狀態
                     
                     const ui = getVoiceUI();
                     if (!isStandbyMode) {
@@ -488,7 +483,8 @@
                         if (!isStandbyMode) {
                             ui.status.innerHTML = `💬 努力聽取中：<span style="color:#aaa;">"${interimTranscript}"</span>`;
                         } else {
-                            ui.status.innerHTML = `💤 待機防護中...(聽到聲音，若需點名請說「紀錄」喚醒)`;
+                            // 💡 升級：待機時也能看到字幕，讓妳知道麥克風沒壞掉！
+                            ui.status.innerHTML = `💤 待機中，聽到：<span style="color:#aaa;">"${interimTranscript}"</span> (說「紀錄」喚醒)`;
                         }
                     }
 
@@ -524,7 +520,8 @@
             }
         }
 
-        function processVoiceCommand(text) {
+        // isWakeUpCombo 用來標記是不是剛好從待機被喚醒
+        function processVoiceCommand(text, isWakeUpCombo = false) {
             const ui = getVoiceUI();
 
             // 🛑 待機模式防護網
@@ -534,14 +531,17 @@
                     ui.btn.innerHTML = '🛑 停止語音 (正在聆聽...)';
                     ui.btn.classList.remove('standby');
                     ui.btn.classList.add('listening');
-                    playSuccessSound();
-                    ui.status.innerHTML = '✨ 喚醒成功！小豆芽繼續聽命...';
-                    resetStandbyTimer(); // 喚醒成功，重新發放倒數計時！
+                    resetStandbyTimer(); 
 
                     let wakeIndex = Math.max(text.indexOf('紀錄'), text.indexOf('記錄'));
                     let afterWakeWord = text.substring(wakeIndex + 2);
+                    
                     if (afterWakeWord.match(/\d+/g)) {
-                        setTimeout(() => processVoiceCommand(afterWakeWord), 300);
+                        // 💡 升級：有號碼的話直接帶入處理，並打上「剛喚醒」的標記
+                        processVoiceCommand(afterWakeWord, true);
+                    } else {
+                        playSuccessSound();
+                        ui.status.innerHTML = '✨ 喚醒成功！小豆芽繼續聽命...';
                     }
                 }
                 return; 
@@ -575,15 +575,19 @@
                 
                 if (clickedNums.length > 0) {
                     playSuccessSound();
-                    ui.status.innerHTML = `✅ 聽到「${text}」👉 <span style="color:var(--primary); font-size:18px;">成功勾選: ${clickedNums.join(', ')}</span>`;
+                    // 💡 升級：如果是一口氣喊出來的，就給妳超安心的一條龍提示
+                    let prefixMsg = isWakeUpCombo ? "✨ 喚醒成功！並" : "";
+                    ui.status.innerHTML = `${prefixMsg}✅ 聽到「${text}」👉 <span style="color:var(--primary); font-size:18px;">成功勾選: ${clickedNums.join(', ')}</span>`;
                 } else {
-                    ui.status.innerHTML = `🤔 聽到「${text}」，但這些號碼已經點過了喔！(若需更正請手動點擊)`;
+                    let prefixMsg = isWakeUpCombo ? "✨ 喚醒成功！但" : "";
+                    ui.status.innerHTML = `${prefixMsg}🤔 聽到「${text}」，號碼已點過囉！(更正請手動)`;
                 }
                 
-                // 💡 只有成功聽到數字，才會重新刷新 15 秒的時間喔！
                 resetStandbyTimer(); 
             } else {
-                ui.status.innerHTML = `🤔 確定句子「${text}」，但裡面沒有數字喔！`;
+                if(!isWakeUpCombo) {
+                    ui.status.innerHTML = `🤔 確定句子「${text}」，但裡面沒有數字喔！`;
+                }
             }
         }
         // ==============================
