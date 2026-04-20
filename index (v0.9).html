@@ -96,6 +96,7 @@
         th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
         th { background-color: var(--primary-light); color: var(--primary); white-space: nowrap; }
 
+        /* 🚀 零空間佔用：三階層任務呼吸燈能量條 (圖檔高對比版) */
         .tr-cleared { background-color: #f6fdf8; }
         .tr-cleared td:first-child {
             border-left: 6px solid #00C853 !important; 
@@ -147,7 +148,7 @@
         </div>
         
         <div style="text-align: center; margin-bottom: 15px; background: #e3f2fd; padding: 15px; border-radius: 8px; border: 2px dashed #90caf9;">
-            <button id="voiceBtn" class="voice-btn" onclick="toggleVoiceRecognition(false)">🎤 開啟語音點名</button>
+            <button id="voiceBtn" class="voice-btn" onclick="toggleVoiceRecognition()">🎤 開啟語音點名</button>
             <div id="voiceStatus" style="color: #1976D2; font-size: 15px; margin-top: 10px; font-weight: bold; min-height: 24px; transition: 0.3s;">
                 點擊按鈕，允許麥克風後即可用語音報號喔！
             </div>
@@ -163,14 +164,6 @@
 
     <div class="card edit-mode" id="editCard" style="display: none; border: 2px solid var(--edit-color);">
         <h2 style="color: var(--edit-color); font-size: 20px;">✏️ 修改紀錄模式</h2>
-        
-        <div style="text-align: center; margin-bottom: 15px; background: var(--edit-light); padding: 15px; border-radius: 8px; border: 2px dashed var(--edit-color);">
-            <button id="editVoiceBtn" class="voice-btn" onclick="toggleVoiceRecognition(true)">🎤 開啟語音修改</button>
-            <div id="editVoiceStatus" style="color: #1976D2; font-size: 15px; margin-top: 10px; font-weight: bold; min-height: 24px; transition: 0.3s;">
-                點擊按鈕，允許麥克風後即可用語音修改補登號碼喔！
-            </div>
-        </div>
-
         <div class="set-box" style="border-color: var(--edit-color); background-color: var(--edit-light);">
             <div class="set-header">
                 <input type="text" id="editTitle" placeholder="標題" style="flex:2; min-width: 150px;">
@@ -231,10 +224,8 @@
         let editSubmittedSet = new Set(), editExemptSet = new Set(), editingRecordId = null;
         let isShowingAll = false;
 
-        // 🌱 語音辨識雙核變數
         let recognition = null;
         let isListening = false;
-        let isEditVoiceMode = false; // 判斷目前是「新增模式」還是「修改模式」
         
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx;
@@ -247,10 +238,10 @@
             const gainNode = audioCtx.createGain();
             
             oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); 
+            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
             oscillator.frequency.exponentialRampToValueAtTime(1760, audioCtx.currentTime + 0.1); 
             
-            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); 
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
             gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
             
             oscillator.connect(gainNode);
@@ -386,32 +377,12 @@
             resetTracker(); loadHistory();
         }
 
-        // ==============================
-        // 🌱 語音辨識核心魔法 (雙核升級版)
-        // ==============================
-
-        // 取得目前作用中的語音介面 (新增 or 修改)
-        function getVoiceUI() {
-            return {
-                btn: document.getElementById(isEditVoiceMode ? 'editVoiceBtn' : 'voiceBtn'),
-                status: document.getElementById(isEditVoiceMode ? 'editVoiceStatus' : 'voiceStatus')
-            };
-        }
-
-        function toggleVoiceRecognition(isEdit = false) {
+        function toggleVoiceRecognition() {
             if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
                 alert("小豆芽提醒：妳的瀏覽器目前不支援語音功能喔！建議使用最新版的 Google Chrome 瀏覽器。");
                 return;
             }
-            
             if (!audioCtx) audioCtx = new AudioContext();
-
-            // 如果正在聽，且切換了模式，先關掉
-            if (isListening && isEditVoiceMode !== isEdit) {
-                stopVoiceRecognition();
-            }
-
-            isEditVoiceMode = isEdit;
 
             if (isListening) stopVoiceRecognition();
             else startVoiceRecognition();
@@ -427,42 +398,30 @@
 
                 recognition.onstart = function() {
                     isListening = true;
-                    const ui = getVoiceUI();
-                    ui.btn.innerHTML = '🛑 停止語音 (正在聆聽...)';
-                    ui.btn.classList.add('listening');
-                    ui.status.innerHTML = '👂 小豆芽聽命！請直接念出座號...';
+                    const btn = document.getElementById('voiceBtn');
+                    btn.innerHTML = '🛑 停止語音 (正在聆聽...)';
+                    btn.classList.add('listening');
+                    document.getElementById('voiceStatus').innerHTML = '👂 小豆芽聽命！請直接念出座號...';
                 };
 
                 recognition.onresult = function(event) {
                     let interimTranscript = '';
                     let finalTranscript = '';
-
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
                         if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
                         else interimTranscript += event.results[i][0].transcript;
                     }
-
-                    const ui = getVoiceUI();
-                    if (interimTranscript) {
-                        ui.status.innerHTML = `💬 努力聽取中：<span style="color:#aaa;">"${interimTranscript}"</span>`;
-                    }
-
-                    if (finalTranscript) {
-                        processVoiceCommand(finalTranscript);
-                    }
+                    if (interimTranscript) document.getElementById('voiceStatus').innerHTML = `💬 努力聽取中：<span style="color:#aaa;">"${interimTranscript}"</span>`;
+                    if (finalTranscript) processVoiceCommand(finalTranscript);
                 };
 
                 recognition.onerror = function(event) {
-                    console.error("語音錯誤:", event.error);
                     if (event.error === 'not-allowed') {
-                        getVoiceUI().status.innerHTML = '⚠️ 瀏覽器被拒絕使用麥克風囉，請在網址列旁邊允許麥克風權限！';
+                        document.getElementById('voiceStatus').innerHTML = '⚠️ 瀏覽器被拒絕使用麥克風囉，請在網址列旁邊允許麥克風權限！';
                         stopVoiceRecognition();
                     }
                 };
-
-                recognition.onend = function() {
-                    if (isListening) recognition.start();
-                };
+                recognition.onend = function() { if (isListening) recognition.start(); };
             }
             recognition.start();
         }
@@ -470,40 +429,28 @@
         function stopVoiceRecognition() {
             isListening = false;
             if (recognition) recognition.stop();
-            const ui = getVoiceUI();
-            if (ui.btn) {
-                ui.btn.innerHTML = isEditVoiceMode ? '🎤 開啟語音修改' : '🎤 開啟語音點名';
-                ui.btn.classList.remove('listening');
-            }
-            if (ui.status) {
-                ui.status.innerHTML = '語音已暫停。點擊上方按鈕隨時可以重新開始！';
-            }
+            const btn = document.getElementById('voiceBtn');
+            btn.innerHTML = '🎤 開啟語音點名';
+            btn.classList.remove('listening');
+            document.getElementById('voiceStatus').innerHTML = '語音已暫停。點擊上方按鈕隨時可以重新開始！';
         }
 
         function processVoiceCommand(text) {
             let numbers = text.match(/\d+/g);
             if (numbers) {
-                // 智慧判斷總人數：如果是修改模式，就去算修改區有幾顆按鈕；如果是新增，就抓設定的人數
-                let maxCount = isEditVoiceMode 
-                    ? document.querySelectorAll('#editGridArea .num-btn').length 
-                    : parseInt(document.getElementById('studentCount').value);
-                
+                let maxCount = parseInt(document.getElementById('studentCount').value);
                 let clickedNums = [];
-                // 智慧判斷作用區塊：修改模式找 editGridArea，新增模式找 grid-0
-                let grid = document.getElementById(isEditVoiceMode ? 'editGridArea' : 'grid-0');
                 
                 numbers.forEach(numStr => {
                     let num = parseInt(numStr);
                     if (num >= 1 && num <= maxCount) {
+                        const grid = document.getElementById('grid-0');
                         if (grid) {
                             const btns = grid.querySelectorAll('.num-btn');
                             const targetBtn = btns[num - 1]; 
-                            
-                            // 為了安全防呆，只有「還沒交」的按鈕才會被語音觸發
                             if (targetBtn && !targetBtn.classList.contains('active') && !targetBtn.classList.contains('exempt')) {
                                 targetBtn.click();
                                 clickedNums.push(num);
-                                
                                 targetBtn.classList.add('just-clicked');
                                 setTimeout(() => targetBtn.classList.remove('just-clicked'), 500);
                             }
@@ -511,18 +458,16 @@
                     }
                 });
                 
-                const ui = getVoiceUI();
                 if (clickedNums.length > 0) {
                     playSuccessSound();
-                    ui.status.innerHTML = `✅ 聽到「${text}」👉 <span style="color:var(--primary); font-size:18px;">成功勾選: ${clickedNums.join(', ')}</span>`;
+                    document.getElementById('voiceStatus').innerHTML = `✅ 聽到「${text}」👉 <span style="color:var(--primary); font-size:18px;">成功勾選: ${clickedNums.join(', ')}</span>`;
                 } else {
-                    ui.status.innerHTML = `🤔 聽到「${text}」，但這些號碼已經點過了喔！(若需更正請手動點擊)`;
+                    document.getElementById('voiceStatus').innerHTML = `🤔 聽到「${text}」，但這些號碼已經點過了喔！`;
                 }
             } else {
-                getVoiceUI().status.innerHTML = `🤔 確定句子「${text}」，但裡面沒有數字喔！`;
+                document.getElementById('voiceStatus').innerHTML = `🤔 確定句子「${text}」，但裡面沒有數字喔！`;
             }
         }
-        // ==============================
 
         function editRecord(id) {
             let records = JSON.parse(localStorage.getItem('sproutRecords')) || [];
@@ -564,12 +509,7 @@
             cancelEdit(); loadHistory();
         }
 
-        function cancelEdit() { 
-            stopVoiceRecognition(); // 離開修改模式時，確保語音安全關閉
-            document.getElementById('editCard').style.display = 'none'; 
-            document.getElementById('setupCard').style.display = 'block'; 
-            document.getElementById('historyCardContainer').style.display = 'block'; 
-        }
+        function cancelEdit() { document.getElementById('editCard').style.display = 'none'; document.getElementById('setupCard').style.display = 'block'; document.getElementById('historyCardContainer').style.display = 'block'; }
 
         function loadHistory() {
             const tbody = document.getElementById('historyTableBody');
@@ -662,6 +602,7 @@
 
         function deleteRecord(id) { if (confirm("確定刪除這筆紀錄嗎？")) { let records = JSON.parse(localStorage.getItem('sproutRecords')).filter(r => r.id !== id); localStorage.setItem('sproutRecords', JSON.stringify(records)); loadHistory(); } }
 
+        // 🚀 無痕影分身截圖 ＋ 純粹「另存新檔」魔法
         function exportToImage() {
             const captureArea = document.getElementById('captureArea');
             const voiceStatus = document.getElementById('voiceStatus');
@@ -677,6 +618,7 @@
                 scale: 2,
                 useCORS: true,
                 onclone: function(clonedDoc) {
+                    // 在分身網頁裡把按鈕隱藏，不干擾真實畫面！
                     const exportBtns = clonedDoc.querySelectorAll('.hide-on-export');
                     exportBtns.forEach(btn => btn.style.display = 'none');
                 }
@@ -687,6 +629,7 @@
                     const today = new Date().toISOString().slice(0, 10);
                     const defaultFileName = `班級登記總表_${today}.png`;
 
+                    // 👉 只保留：電腦版呼叫「另存新檔」視窗
                     if (window.showSaveFilePicker) {
                         try {
                             const fileHandle = await window.showSaveFilePicker({
@@ -698,11 +641,13 @@
                             await writable.close();
                             alert("📸 總表圖檔已成功儲存到您指定的位置！");
                         } catch (error) {
+                            // 使用者按取消時，不做任何事
                             if (error.name !== 'AbortError') {
                                 fallbackDownload(blob, defaultFileName);
                             }
                         }
                     } 
+                    // 👉 備用方案：傳統自動下載 (不支援 showSaveFilePicker 的瀏覽器)
                     else {
                         fallbackDownload(blob, defaultFileName);
                     }
