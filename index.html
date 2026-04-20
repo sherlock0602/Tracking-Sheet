@@ -402,13 +402,13 @@
             };
         }
 
-        // 啟動 10 秒倒數計時器
+        // 啟動 15 秒倒數計時器
         function resetStandbyTimer() {
             clearTimeout(standbyTimer);
             if (isListening && !isStandbyMode) {
                 standbyTimer = setTimeout(() => {
                     enterStandbyMode();
-                }, 10000); // 10秒未聽取數字，進入待機
+                }, 15000); // 10秒未聽取數字，進入待機
             }
         }
 
@@ -455,7 +455,7 @@
                     ui.btn.innerHTML = '🛑 停止語音 (正在聆聽...)';
                     ui.btn.classList.remove('standby');
                     ui.btn.classList.add('listening');
-                    ui.status.innerHTML = '👂 小豆芽聽命！請直接念出座號... (10秒未念數字將自動待機保護)';
+                    ui.status.innerHTML = '👂 小豆芽聽命！請直接念出座號... (15秒未念數字將自動待機保護)';
                     resetStandbyTimer();
                 };
 
