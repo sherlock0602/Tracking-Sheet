@@ -56,7 +56,7 @@
         button.voice-btn { background-color: #2196F3; font-size: 16px; width: 100%; max-width: 300px;}
         button.voice-btn:hover { background-color: #1976D2; }
         button.voice-btn.listening { background-color: #f44336; animation: pulse 1.5s infinite; }
-        button.voice-btn.standby { background-color: var(--exempt); animation: none; } /* 待機橘色狀態 */
+        button.voice-btn.standby { background-color: var(--exempt); animation: none; } 
         
         @keyframes pulse {
             0% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7); }
@@ -232,6 +232,12 @@
         let editSubmittedSet = new Set(), editExemptSet = new Set(), editingRecordId = null;
         let isShowingAll = false;
 
+        // ==============================
+        // ⏳ 語音待機時間設定區 (毫秒)
+        // 10000 = 10秒, 15000 = 15秒, 20000 = 20秒
+        // ==============================
+        const STANDBY_TIME = 15000; // 👈 妳可以在這裡隨時修改秒數！
+
         // 🌱 語音辨識大腦變數
         let recognition = null;
         let isListening = false;
@@ -392,7 +398,7 @@
         }
 
         // ==============================
-        // 🌱 語音辨識核心魔法 (雙核 + 待機喚醒防護)
+        // 🌱 語音辨識核心魔法 (完美倒數防護)
         // ==============================
 
         function getVoiceUI() {
@@ -402,13 +408,13 @@
             };
         }
 
-        // 啟動 15 秒倒數計時器
+        // 啟動倒數計時器
         function resetStandbyTimer() {
             clearTimeout(standbyTimer);
             if (isListening && !isStandbyMode) {
                 standbyTimer = setTimeout(() => {
                     enterStandbyMode();
-                }, 15000); // 10秒未聽取數字，進入待機
+                }, STANDBY_TIME); 
             }
         }
 
@@ -420,7 +426,7 @@
             ui.btn.innerHTML = '💤 語音待機中 (聆聽喚醒詞...)';
             ui.btn.classList.remove('listening');
             ui.btn.classList.add('standby');
-            ui.status.innerHTML = '💤 已進入防誤聽待機模式。<br>請對麥克風說「<span style="color:#f44336; font-weight:bold;">紀錄</span>」重新喚醒小豆芽！';
+            ui.status.innerHTML = '💤 已進入防護待機。<br>請對麥克風說「<span style="color:#f44336; font-weight:bold;">紀錄</span>」重新喚醒小豆芽！';
         }
 
         function toggleVoiceRecognition(isEdit = false) {
@@ -436,8 +442,13 @@
 
             isEditVoiceMode = isEdit;
 
-            if (isListening) stopVoiceRecognition();
-            else startVoiceRecognition();
+            if (isListening) {
+                stopVoiceRecognition();
+            } else {
+                isStandbyMode = false; // 只有使用者「手動點擊按鈕」時，才強制清醒
+                startVoiceRecognition();
+                resetStandbyTimer(); // 手動開啟時，開始第一輪倒數
+            }
         }
 
         function startVoiceRecognition() {
@@ -450,13 +461,16 @@
 
                 recognition.onstart = function() {
                     isListening = true;
-                    isStandbyMode = false; // 每次啟動都先醒著
+                    // 💡 修復關鍵：把 isStandbyMode = false 從這裡移除了！
+                    // 這樣就算瀏覽器偷偷換氣，也不會打斷待機狀態
+                    
                     const ui = getVoiceUI();
-                    ui.btn.innerHTML = '🛑 停止語音 (正在聆聽...)';
-                    ui.btn.classList.remove('standby');
-                    ui.btn.classList.add('listening');
-                    ui.status.innerHTML = '👂 小豆芽聽命！請直接念出座號... (15秒未念數字將自動待機保護)';
-                    resetStandbyTimer();
+                    if (!isStandbyMode) {
+                        ui.btn.innerHTML = '🛑 停止語音 (正在聆聽...)';
+                        ui.btn.classList.remove('standby');
+                        ui.btn.classList.add('listening');
+                        ui.status.innerHTML = `👂 小豆芽聽命！請直接念出座號... (${STANDBY_TIME/1000}秒未念數字將自動待機保護)`;
+                    }
                 };
 
                 recognition.onresult = function(event) {
@@ -513,28 +527,27 @@
         function processVoiceCommand(text) {
             const ui = getVoiceUI();
 
-            // 🛑 如果在待機模式，攔截所有數字，只聽「喚醒詞」
+            // 🛑 待機模式防護網
             if (isStandbyMode) {
                 if (text.includes('紀錄') || text.includes('記錄')) {
                     isStandbyMode = false;
                     ui.btn.innerHTML = '🛑 停止語音 (正在聆聽...)';
                     ui.btn.classList.remove('standby');
                     ui.btn.classList.add('listening');
-                    playSuccessSound(); // 播放喚醒音效
+                    playSuccessSound();
                     ui.status.innerHTML = '✨ 喚醒成功！小豆芽繼續聽命...';
-                    resetStandbyTimer();
+                    resetStandbyTimer(); // 喚醒成功，重新發放倒數計時！
 
-                    // 檢查喚醒詞後面有沒有直接跟著數字 (例如: "紀錄 5號")
                     let wakeIndex = Math.max(text.indexOf('紀錄'), text.indexOf('記錄'));
                     let afterWakeWord = text.substring(wakeIndex + 2);
                     if (afterWakeWord.match(/\d+/g)) {
                         setTimeout(() => processVoiceCommand(afterWakeWord), 300);
                     }
                 }
-                return; // 待機中，不管聽懂沒聽懂，都在此打住
+                return; 
             }
 
-            // 🟢 以下為活躍模式：正常處理數字
+            // 🟢 活躍模式
             let numbers = text.match(/\d+/g);
             if (numbers) {
                 let maxCount = isEditVoiceMode 
@@ -567,11 +580,10 @@
                     ui.status.innerHTML = `🤔 聽到「${text}」，但這些號碼已經點過了喔！(若需更正請手動點擊)`;
                 }
                 
-                // 只要有唸數字 (代表還在工作)，就重置 10 秒計時器
+                // 💡 只有成功聽到數字，才會重新刷新 15 秒的時間喔！
                 resetStandbyTimer(); 
             } else {
                 ui.status.innerHTML = `🤔 確定句子「${text}」，但裡面沒有數字喔！`;
-                // 若只聊天沒念數字，不重置計時器，讓它自然防護待機
             }
         }
         // ==============================
@@ -617,7 +629,7 @@
         }
 
         function cancelEdit() { 
-            stopVoiceRecognition(); // 切換畫面時關閉語音
+            stopVoiceRecognition();
             document.getElementById('editCard').style.display = 'none'; 
             document.getElementById('setupCard').style.display = 'block'; 
             document.getElementById('historyCardContainer').style.display = 'block'; 
