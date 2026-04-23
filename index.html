@@ -130,7 +130,8 @@
         .legend { display: flex; justify-content: center; gap: 15px; margin-bottom: 10px; font-size: 13px; color: #666; }
         .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
         
-        .action-btns { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+        /* 💡 修正：強制橫向不換行 (nowrap)，並拉近間距 */
+        .action-btns { display: flex; gap: 8px; flex-wrap: nowrap; justify-content: center; align-items: center; }
         
         /* 🚀 純圖案無底色按鈕設定 */
         .action-btns button {
@@ -138,13 +139,13 @@
             border: none;
             box-shadow: none;
             padding: 4px;
-            font-size: 20px; /* 稍微放大圖示 */
+            font-size: 20px; 
             color: inherit;
             transition: transform 0.2s;
         }
         .action-btns button:hover {
             background: transparent !important; 
-            transform: scale(1.3); /* 游標移上去會放大，增加互動感 */
+            transform: scale(1.3); 
         }
         
         .hide-on-export { display: table-cell; }
@@ -241,7 +242,7 @@
                             <th>已交</th>
                             <th>免交</th>
                             <th>未交</th>
-                            <th class="hide-on-export" style="width: 1%;">操作</th>
+                            <th class="hide-on-export" style="width: 1%; white-space: nowrap;">操作</th>
                         </tr>
                     </thead>
                     <tbody id="historyTableBody"></tbody>
@@ -395,7 +396,7 @@
                     className: className, title: title, memo: document.getElementById(`memo-${s}`).value.trim(),
                     total: total, submitted: Array.from(currentSetsData[s].submitted).sort((a, b) => a - b),
                     exempt: Array.from(currentSetsData[s].exempt).sort((a, b) => a - b),
-                    isShelved: false
+                    isShelved: false // 預設不是擱置狀態
                 });
                 lastSavedMonth = recordDate.substring(0, 7); 
             }
@@ -410,6 +411,10 @@
             }
             resetTracker(); loadHistory();
         }
+
+        // ==============================
+        // 🌱 語音辨識核心魔法 (無限聆聽版)
+        // ==============================
 
         function getVoiceUI() {
             return {
@@ -535,6 +540,10 @@
                 ui.status.innerHTML = `🤔 確定句子「${text}」，但裡面沒有數字喔！`;
             }
         }
+
+        // ==============================
+        // ✏️ 狀態修改與切換功能區
+        // ==============================
 
         function toggleShelve(id) {
             let records = JSON.parse(localStorage.getItem('sproutRecords')) || [];
