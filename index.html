@@ -56,7 +56,6 @@
         button.voice-btn { background-color: #2196F3; font-size: 16px; width: 100%; max-width: 300px;}
         button.voice-btn:hover { background-color: #1976D2; }
         button.voice-btn.listening { background-color: #f44336; animation: pulse 1.5s infinite; }
-        button.voice-btn.standby { background-color: var(--exempt); animation: none; } 
         
         @keyframes pulse {
             0% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7); }
@@ -232,19 +231,10 @@
         let editSubmittedSet = new Set(), editExemptSet = new Set(), editingRecordId = null;
         let isShowingAll = false;
 
-        // ==============================
-        // ⏳ 語音待機時間設定區 (毫秒)
-        // ==============================
-        const STANDBY_TIME = 15000; 
-
         // 🌱 語音辨識大腦變數
         let recognition = null;
         let isListening = false;
         let isEditVoiceMode = false;
-        
-        // 🛡️ 待機系統變數
-        let isStandbyMode = false;
-        let standbyTimer = null;
         
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx;
@@ -397,7 +387,7 @@
         }
 
         // ==============================
-        // 🌱 語音辨識核心魔法
+        // 🌱 語音辨識核心魔法 (無限聆聽版)
         // ==============================
 
         function getVoiceUI() {
@@ -405,25 +395,6 @@
                 btn: document.getElementById(isEditVoiceMode ? 'editVoiceBtn' : 'voiceBtn'),
                 status: document.getElementById(isEditVoiceMode ? 'editVoiceStatus' : 'voiceStatus')
             };
-        }
-
-        function resetStandbyTimer() {
-            clearTimeout(standbyTimer);
-            if (isListening && !isStandbyMode) {
-                standbyTimer = setTimeout(() => {
-                    enterStandbyMode();
-                }, STANDBY_TIME); 
-            }
-        }
-
-        function enterStandbyMode() {
-            if (!isListening) return;
-            isStandbyMode = true;
-            const ui = getVoiceUI();
-            ui.btn.innerHTML = '💤 語音待機中 (聆聽喚醒詞...)';
-            ui.btn.classList.remove('listening');
-            ui.btn.classList.add('standby');
-            ui.status.innerHTML = '💤 已進入防護待機。<br>請對麥克風說「<span style="color:#f44336; font-weight:bold;">紀錄</span>」重新喚醒小豆芽！';
         }
 
         function toggleVoiceRecognition(isEdit = false) {
@@ -442,9 +413,7 @@
             if (isListening) {
                 stopVoiceRecognition();
             } else {
-                isStandbyMode = false; 
                 startVoiceRecognition();
-                // 註解：不用在這裡呼叫 resetStandbyTimer，移交給 onstart 確保麥克風已啟動
             }
         }
 
@@ -460,15 +429,9 @@
                     isListening = true;
                     
                     const ui = getVoiceUI();
-                    if (!isStandbyMode) {
-                        ui.btn.innerHTML = '🛑 停止語音 (正在聆聽...)';
-                        ui.btn.classList.remove('standby');
-                        ui.btn.classList.add('listening');
-                        ui.status.innerHTML = `👂 小豆芽聽命！請直接念出座號... (${STANDBY_TIME/1000}秒未念數字將自動待機保護)`;
-                        
-                        // 💡 關鍵修復：確保麥克風真的開始聽了，才啟動倒數計時！
-                        resetStandbyTimer(); 
-                    }
+                    ui.btn.innerHTML = '🛑 停止語音 (正在聆聽...)';
+                    ui.btn.classList.add('listening');
+                    ui.status.innerHTML = `👂 小豆芽聽命！請直接念出座號...`;
                 };
 
                 recognition.onresult = function(event) {
@@ -483,11 +446,7 @@
                     const ui = getVoiceUI();
                     
                     if (interimTranscript) {
-                        if (!isStandbyMode) {
-                            ui.status.innerHTML = `💬 努力聽取中：<span style="color:#aaa;">"${interimTranscript}"</span>`;
-                        } else {
-                            ui.status.innerHTML = `💤 待機中，聽到：<span style="color:#aaa;">"${interimTranscript}"</span> (說「紀錄」喚醒)`;
-                        }
+                        ui.status.innerHTML = `💬 努力聽取中：<span style="color:#aaa;">"${interimTranscript}"</span>`;
                     }
 
                     if (finalTranscript) {
@@ -508,43 +467,19 @@
 
         function stopVoiceRecognition() {
             isListening = false;
-            isStandbyMode = false;
-            clearTimeout(standbyTimer);
             if (recognition) recognition.stop();
             const ui = getVoiceUI();
             if (ui.btn) {
                 ui.btn.innerHTML = isEditVoiceMode ? '🎤 開啟語音修改' : '🎤 開啟語音點名';
                 ui.btn.classList.remove('listening');
-                ui.btn.classList.remove('standby');
             }
             if (ui.status) {
                 ui.status.innerHTML = '語音已暫停。點擊上方按鈕隨時可以重新開始！';
             }
         }
 
-        function processVoiceCommand(text, isWakeUpCombo = false) {
+        function processVoiceCommand(text) {
             const ui = getVoiceUI();
-
-            if (isStandbyMode) {
-                if (text.includes('紀錄') || text.includes('記錄')) {
-                    isStandbyMode = false;
-                    ui.btn.innerHTML = '🛑 停止語音 (正在聆聽...)';
-                    ui.btn.classList.remove('standby');
-                    ui.btn.classList.add('listening');
-                    resetStandbyTimer(); 
-
-                    let wakeIndex = Math.max(text.indexOf('紀錄'), text.indexOf('記錄'));
-                    let afterWakeWord = text.substring(wakeIndex + 2);
-                    
-                    if (afterWakeWord.match(/\d+/g)) {
-                        processVoiceCommand(afterWakeWord, true);
-                    } else {
-                        playSuccessSound();
-                        ui.status.innerHTML = '✨ 喚醒成功！小豆芽繼續聽命...';
-                    }
-                }
-                return; 
-            }
 
             let numbers = text.match(/\d+/g);
             if (numbers) {
@@ -573,18 +508,13 @@
                 
                 if (clickedNums.length > 0) {
                     playSuccessSound();
-                    let prefixMsg = isWakeUpCombo ? "✨ 喚醒成功！並" : "";
-                    ui.status.innerHTML = `${prefixMsg}✅ 聽到「${text}」👉 <span style="color:var(--primary); font-size:18px;">成功勾選: ${clickedNums.join(', ')}</span>`;
+                    ui.status.innerHTML = `✅ 聽到「${text}」👉 <span style="color:var(--primary); font-size:18px;">成功勾選: ${clickedNums.join(', ')}</span>`;
                 } else {
-                    let prefixMsg = isWakeUpCombo ? "✨ 喚醒成功！但" : "";
-                    ui.status.innerHTML = `${prefixMsg}🤔 聽到「${text}」，號碼已點過囉！(更正請手動)`;
+                    ui.status.innerHTML = `🤔 聽到「${text}」，號碼已點過囉！(更正請手動)`;
                 }
                 
-                resetStandbyTimer(); 
             } else {
-                if(!isWakeUpCombo) {
-                    ui.status.innerHTML = `🤔 確定句子「${text}」，但裡面沒有數字喔！`;
-                }
+                ui.status.innerHTML = `🤔 確定句子「${text}」，但裡面沒有數字喔！`;
             }
         }
         // ==============================
