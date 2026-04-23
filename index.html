@@ -96,23 +96,36 @@
         th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
         th { background-color: var(--primary-light); color: var(--primary); white-space: nowrap; }
 
+        /* 🚀 零空間佔用：四階層任務呼吸燈能量條 */
+        
+        /* 1. 已完成 (綠) */
         .tr-cleared { background-color: #f6fdf8; }
         .tr-cleared td:first-child {
             border-left: 6px solid #00C853 !important; 
             box-shadow: inset 6px 0 10px rgba(0, 200, 83, 0.15);
         }
 
+        /* 2. 期限內、未完成 (藍) */
         .tr-pending { background-color: #ffffff; }
         .tr-pending td:first-child {
             border-left: 6px solid #2196F3 !important; 
             box-shadow: inset 6px 0 10px rgba(33, 150, 243, 0.15);
         }
 
+        /* 3. 已逾期、未完成 (紅) */
         .tr-overdue { background-color: #fffafa; }
         .tr-overdue td:first-child {
             border-left: 6px solid #ff3366 !important; 
             animation: energyAlert 1.2s infinite alternate ease-in-out;
         }
+
+        /* 4. 已擱置 (灰：不顯眼、乖乖墊底) */
+        .tr-shelved { background-color: #fcfcfc; opacity: 0.85; }
+        .tr-shelved td:first-child {
+            border-left: 6px solid #9E9E9E !important; 
+            box-shadow: inset 6px 0 10px rgba(158, 158, 158, 0.1);
+        }
+        .tr-shelved strong { color: #777 !important; } /* 減弱標題顏色 */
 
         @keyframes energyAlert {
             0% { border-left-color: #ff3366; box-shadow: inset 2px 0 5px rgba(255, 51, 102, 0.2); }
@@ -122,7 +135,13 @@
         .legend { display: flex; justify-content: center; gap: 15px; margin-bottom: 10px; font-size: 13px; color: #666; }
         .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
         
-        .action-btns { display: flex; gap: 5px; }
+        .action-btns { display: flex; gap: 5px; flex-wrap: wrap; justify-content: center; }
+        /* 圖示化按鈕設定，讓它變成正方形按鈕 */
+        .action-btns button {
+            width: 32px; height: 32px; padding: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 15px;
+        }
         .hide-on-export { display: table-cell; }
     </style>
 </head>
@@ -201,10 +220,10 @@
                 <input type="month" id="filterStart">
                 <label style="color:#666;">～</label>
                 <input type="month" id="filterEnd">
-                <button onclick="applyFilter()" style="padding: 6px 12px; font-size: 14px;">🔍 查詢</button>
-                <button onclick="showAllRecords()" class="all-btn" style="padding: 6px 12px; font-size: 14px;">📂 全部</button>
+                <button onclick="applyFilter()" style="padding: 6px 12px; font-size: 14px; width: auto; height: auto;">🔍 查詢</button>
+                <button onclick="showAllRecords()" class="all-btn" style="padding: 6px 12px; font-size: 14px; width: auto; height: auto;">📂 全部</button>
             </div>
-            <button class="export-btn" onclick="exportToImage()">📸 輸出成圖檔</button>
+            <button class="export-btn" style="width: auto; height: auto;" onclick="exportToImage()">📸 輸出成圖檔</button>
         </div>
         <div id="captureArea" style="background: white; padding: 10px; border-radius: 8px;">
             <div style="overflow-x: auto;">
@@ -370,7 +389,8 @@
                     id: Date.now() + s, date: recordDate, dueDate: recordDueDate,
                     className: className, title: title, memo: document.getElementById(`memo-${s}`).value.trim(),
                     total: total, submitted: Array.from(currentSetsData[s].submitted).sort((a, b) => a - b),
-                    exempt: Array.from(currentSetsData[s].exempt).sort((a, b) => a - b)
+                    exempt: Array.from(currentSetsData[s].exempt).sort((a, b) => a - b),
+                    isShelved: false // 預設不是擱置狀態
                 });
                 lastSavedMonth = recordDate.substring(0, 7); 
             }
@@ -427,7 +447,6 @@
 
                 recognition.onstart = function() {
                     isListening = true;
-                    
                     const ui = getVoiceUI();
                     ui.btn.innerHTML = '🛑 停止語音 (正在聆聽...)';
                     ui.btn.classList.add('listening');
@@ -480,7 +499,6 @@
 
         function processVoiceCommand(text) {
             const ui = getVoiceUI();
-
             let numbers = text.match(/\d+/g);
             if (numbers) {
                 let maxCount = isEditVoiceMode 
@@ -512,12 +530,25 @@
                 } else {
                     ui.status.innerHTML = `🤔 聽到「${text}」，號碼已點過囉！(更正請手動)`;
                 }
-                
             } else {
                 ui.status.innerHTML = `🤔 確定句子「${text}」，但裡面沒有數字喔！`;
             }
         }
+
         // ==============================
+        // ✏️ 狀態修改與切換功能區
+        // ==============================
+
+        function toggleShelve(id) {
+            let records = JSON.parse(localStorage.getItem('sproutRecords')) || [];
+            const idx = records.findIndex(r => r.id === id);
+            if (idx !== -1) {
+                // 如果原本沒有 isShelved 屬性，就把它當作 false 變成 true
+                records[idx].isShelved = !records[idx].isShelved;
+                localStorage.setItem('sproutRecords', JSON.stringify(records));
+                loadHistory(); // 重新整理表格
+            }
+        }
 
         function editRecord(id) {
             let records = JSON.parse(localStorage.getItem('sproutRecords')) || [];
@@ -590,6 +621,7 @@
                 return keywordMatch && dateMatch;
             });
 
+            // 🚀 重新計算優先級（加入第四階層：擱置區）
             records.forEach(r => {
                 const exempt = r.exempt || [];
                 let unhandedCount = 0;
@@ -600,7 +632,9 @@
                 r.isCleared = (unhandedCount === 0);
                 r.isOverdue = (!r.isCleared && r.dueDate && todayStr > r.dueDate);
                 
-                if (r.isOverdue) r.sortPriority = 1;
+                // 優先級：1=逾期紅，2=進行藍，3=過關綠，4=擱置灰 (永遠墊底)
+                if (r.isShelved) r.sortPriority = 4;
+                else if (r.isOverdue) r.sortPriority = 1;
                 else if (!r.isCleared) r.sortPriority = 2;
                 else r.sortPriority = 3;
             });
@@ -619,16 +653,29 @@
                     if (!r.submitted.includes(i) && !exempt.includes(i)) unhandedArray.push(i);
                 }
 
+                // 決定列的顏色與狀態
                 let rowClass = 'tr-pending'; 
-                if (r.isCleared) rowClass = 'tr-cleared'; 
+                if (r.isShelved) rowClass = 'tr-shelved';
+                else if (r.isCleared) rowClass = 'tr-cleared'; 
                 else if (r.isOverdue) rowClass = 'tr-overdue'; 
 
                 let dateDisplay = `<span style="color:#666;">發放: ${r.date}</span>`;
                 if (r.dueDate) {
                     let dueColor = r.isOverdue ? '#f44336' : '#2196F3';
                     if (r.isCleared) dueColor = '#00C853'; 
+                    if (r.isShelved) dueColor = '#9E9E9E'; // 擱置時字體變灰
                     dateDisplay += `<br><strong style="color:${dueColor};">截止: ${r.dueDate}</strong>`;
                 }
+                
+                // 如果是擱置狀態，再加上一個小標籤
+                if (r.isShelved) {
+                    dateDisplay += `<br><span style="display:inline-block; margin-top:4px; background:#9e9e9e; color:white; padding:2px 6px; border-radius:4px; font-size:11px;">📦 已擱置</span>`;
+                }
+
+                // 圖示化按鈕設定
+                const shelveIcon = r.isShelved ? '🔄' : '📦';
+                const shelveTitle = r.isShelved ? '取消擱置 (恢復原狀態)' : '擱置 (不再置頂提醒)';
+                const shelveBg = r.isShelved ? '#4CAF50' : '#9E9E9E'; // 取消擱置是綠色，擱置是灰色
 
                 const tr = document.createElement('tr');
                 tr.className = rowClass; 
@@ -641,8 +688,9 @@
                     <td style="color:#d32f2f; font-weight:bold;">${unhandedArray.length} 人<br><small>(${unhandedArray.join(', ') || '無'})</small></td>
                     <td class="hide-on-export">
                         <div class="action-btns">
-                            <button class="edit-btn" onclick="editRecord(${r.id})" style="padding:4px 10px; font-size:13px;">修改</button> 
-                            <button class="danger" onclick="deleteRecord(${r.id})" style="padding:4px 10px; font-size:13px;">刪除</button>
+                            <button class="edit-btn" onclick="editRecord(${r.id})" title="修改內容">✏️</button>
+                            <button onclick="toggleShelve(${r.id})" title="${shelveTitle}" style="background-color: ${shelveBg};">${shelveIcon}</button>
+                            <button class="danger" onclick="deleteRecord(${r.id})" title="刪除紀錄">🗑️</button>
                         </div>
                     </td>
                 `;
@@ -651,7 +699,7 @@
             
             if (!records.length) {
                 const msg = "找不到符合條件的紀錄喔！";
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 20px; color:#666;">${msg}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan=\"7\" style=\"text-align:center; padding: 20px; color:#666;\">${msg}</td></tr>`;
             }
         }
 
