@@ -683,10 +683,24 @@
         function shareToCloud() {
             closeModals();
             generateCanvas(async blob => {
-                const today = new Date().toISOString().slice(0, 10); const fileName = `班級登記總表_${today}.png`; const file = new File([blob], fileName, { type: 'image/png' });
+                const today = new Date().toISOString().slice(0, 10); 
+                const fileName = `班級登記總表_${today}.png`; 
+                const file = new File([blob], fileName, { type: 'image/png' });
+                
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    try { await navigator.share({ title: '班級登記總表', text: '來自小豆芽的班級總表圖檔', files: [file] }); console.log('分享成功'); } catch (err) { console.log('使用者取消分享或失敗', err); }
-                } else { alert("⚠️ 您的裝置或瀏覽器不支援直接分享檔案，將切換為一般下載。"); fallbackDownload(blob, fileName); }
+                    try { 
+                        // 移除 title 與 text，只單純分享檔案，避免雲端硬碟自動產生 txt 文字檔
+                        await navigator.share({ 
+                            files: [file] 
+                        }); 
+                        console.log('分享成功'); 
+                    } catch (err) { 
+                        console.log('使用者取消分享或失敗', err); 
+                    }
+                } else { 
+                    alert("⚠️ 您的裝置或瀏覽器不支援直接分享檔案，將切換為一般下載。"); 
+                    fallbackDownload(blob, fileName); 
+                }
             });
         }
 
